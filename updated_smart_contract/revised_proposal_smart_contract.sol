@@ -547,7 +547,7 @@ contract DepositandWithdraw {
     address[] public validatorWhoApproved;
     address[] public validatorWhoRejected;
     address[] public allInvestors;
-    address[] private allValidators;
+    address[] public allValidators;
     address[] public viewAllInvestorAddress;
     address owner;
 
@@ -612,6 +612,7 @@ contract DepositandWithdraw {
 		v.voted = false;
 		voterRegister[_voterAddress] = v;
         totalValidators++;
+        allValidators.push(_voterAddress);
         if(totalValidators > 5){
             revert("Maximum number of validators has been reached for the proposal");
         }
