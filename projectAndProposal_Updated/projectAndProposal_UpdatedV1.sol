@@ -966,8 +966,9 @@ Validation Function:
     function withdrawSubsequentStableCoins(uint subs_Id, address _founder, bytes32 symbol, uint _projectId) external returns (bool withdrawStatus){
     
         require(msg.sender == _founder,"The connected wallet is not a founder wallet"); 
+        getProjectStatus[_projectId] = "The project is live";
         if(withdrawlSetup[_projectId][subs_Id] == 3){
-            getProjectStatus[_projectId] = true;
+            getProjectStatus[_projectId] = "Project is rejected";
             revert("The project is closed, due to three subsequent validation failure");
         } 
         if(approvals[_projectId][subs_Id].length >= 3){
@@ -1204,9 +1205,9 @@ Validation Function:
     }
 
     // 11. getProjectStatus - project_id                            // project live or not
-    mapping(uint => bool) public getProjectStatus;
+    mapping(uint => string) public getProjectStatus;
 
-    function _getProjectStatus(uint _projectId) public view returns(bool){
+    function _getProjectStatus(uint _projectId) public view returns(string memory){
         return getProjectStatus[_projectId];
     }
 
