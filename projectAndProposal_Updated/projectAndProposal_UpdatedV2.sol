@@ -987,6 +987,7 @@ Validation Function:
             getTotalReleasedFundsToFounderFromEscrow[_projectId][_founder] += subsCycleBalance[_projectId][subs_Id];
             projectCycle[_projectId].cycles -= 1;   // dynamic
             getProjectCurrentCycle[_projectId] = projectCycle[_projectId].cycles;
+            getTotalProjectValue[_projectId] = es[_projectId][_founder];
             if(projectCycle[_projectId].cycles <= 0){
                 getProjectStatus[_projectId] = "Completed";
             }
@@ -1253,57 +1254,87 @@ Validation Function:
 
 }
 
-// pragma solidity 0.8.0;
+pragma solidity 0.8.0;
 
-// contract Vesting{
+contract Vesting{
 
-// /*
-//     Vesting Smart Contract:
-//         a. depositFounderTokens(proj_id, vest_id, investor, token_no, tge_date_in_seconds, tge_percent, vesting_start_date, no_of_vesting_months)
-//         uint projId;
-//         uint vestingID;
-//         amount = no of tokens;
-//         uint tgeDate (keep this record in seconds)
-//         vesting start data = tgeData + vestingStart Date in seconds
-//         no of vestingMonths a simple uint.
+/*
+    Vesting Smart Contract:
+        a. depositFounderTokens(proj_id, vest_id, investor, token_no, tge_date_in_seconds, tge_percent, vesting_start_date, no_of_vesting_months)
+        uint projId;
+        uint vestingID;
+        amount = no of tokens;
+        uint tgeDate (keep this record in seconds)
+        vesting start data = tgeData + vestingStart Date in seconds
+        no of vestingMonths a simple uint.
 
-//         1. Founder is linking everything with investor address and vesting id, so make sure this condition check is there at first line
+        1. Founder is linking everything with investor address and vesting id, so make sure this condition check is there at first line
 
-//         whitelistedTokens[_symbol] = _tokenAddress;
-//         ERC20(whitelistedTokens[_symbol]).transferFrom(_founder, address(this), _amount);
-// */  
+        whitelistedTokens[_symbol] = _tokenAddress;
+        ERC20(whitelistedTokens[_symbol]).transferFrom(_founder, address(this), _amount);
+*/  
 
-//     mapping(bytes32 => address) private whitelistedTokens;
+    mapping(bytes32 => address) private whitelistedTokens;
 
-//     struct vestingSchedule{
-//         mapping(uint => mapping(address => uint)) depositsOfFounderTokensToInvestor;   // 1 vestingId, address(Investor) = amount (total by founder)
-//         mapping(uint => mapping(uint => address)) investorLinkProjectAndVesting;    // projId, vestingId, address(Investor)
-//         mapping(uint => mapping(address => uint)) tgeDate;                          // vestingId, investor, storeDate (unix)
-//         mapping(uint => mapping(address => uint)) vestingStartDate;                 // vestingId, investor, vestingStarDate (unix)
-//         mapping(uint => mapping(address => uint)) vestingMonths;                    // vestingId, investor, vestingMonths (plain days)
-//     }
+    struct vestingSchedule{
+        mapping(uint => mapping(address => uint)) depositsOfFounderTokensToInvestor;   // 1 vestingId, address(Investor) = amount (total by founder)
+        mapping(uint => mapping(uint => address)) investorLinkProjectAndVesting;    // projId, vestingId, address(Investor)
+        mapping(uint => mapping(address => uint)) tgeDate;                          // vestId, investor = date
+        mapping(uint => mapping(address => uint)) tgePercentage;                       // vestingId, investor, storeDate (unix)
+        mapping(uint => mapping(address => uint)) vestingStartDate;                 // vestingId, investor, vestingStarDate (unix)
+        mapping(uint => mapping(address => uint)) vestingMonths;                    // vestingId, investor, vestingMonths (plain days)
+        mapping(uint => mapping(address => uint)) tgeFund;                          // vestId, investor - tge percentage amt
+        mapping(uint => mapping(address => uint)) remainingFundForInstallments;     // vestId, investor = remaining of tge
+        mapping(uint => mapping(address => uint)) installmentAmount;                // vestId, investor = 800/24 = 
+    }
 
-//     mapping(address => vestingSchedule) vs;
+    mapping(address => vestingSchedule) vs;
 
-// //  depositFounderTokens(proj_id, vest_id, investor, token_no, tge_date_in_seconds, tge_percent, vesting_start_date, no_of_vesting_months)
-//     function depositFounderTokens(address _founder, address _founderSmartContractAd,  uint _projId, uint _vestId, uint _amount, address _investor, uint _tgeDate, uint tgePercent, uint _vestingStartDate, uint _vestingMonths) public {
-//         require(msg.sender == _founder,"The connected wallet is not founder wallet");
-//         Founder f = Founder(_founderSmartContractAd);   // Instance from the founder smart contract. 
-//         if(f.verifyFounder(_founder) == true){
-//             vs[_founder].depositsOfFounderTokensToInvestor[_vestId][_investor] = _amount; // 1
-//             vs[_founder].investorLinkProjectAndVesting[_projId][_vestId] = _investor;  // 2
-//             vs[_founder].tgeDate[_vestId][_investor] = _tgeDate;
+    function getWhitelistedTokenAddresses(bytes32 token) external view returns(address) {
+        return whitelistedTokens[token];
+    }
 
+//  depositFounderTokens(proj_id, vest_id, investor, token_no, tge_date_in_seconds, tge_percent, vesting_start_date, no_of_vesting_months)
+    function depositFounderTokens(address _founder, address _founderSmartContractAd, uint _projId, uint _vestId, uint _amount, address _investor, uint _tgeDate, uint _tgePercent, uint _vestingStartDate, uint _vestingMonths) public {
+        require(msg.sender == _founder,"The connected wallet is not founder wallet");
+        Founder f = Founder(_founderSmartContractAd);   // Instance from the founder smart contract. 
+        if(f.verifyFounder(_founder) == true){
+            vs[_founder].depositsOfFounderTokensToInvestor[_vestId][_investor] = _amount; // 1 deposit
+            vs[_founder].investorLinkProjectAndVesting[_projId][_vestId] = _investor;  // 2 address
+            vs[_founder].tgeDate[_vestId][_investor] = _tgeDate; // 3 unix
+            vs[_founder].tgePercentage[_vestId][_investor] = _tgePercent;
+            vs[_founder].vestingStartDate[_vestId][_investor] = _vestingStartDate; // 4 unix
+            vs[_founder].vestingMonths[_vestId][_investor] = _vestingMonths; // 5 plain
+            /* TGEFUND:
+            1. This gives use the balance of tge fund available for the investor to withdraw.
+            2. makes this available for the investor to withdraw after "_tgeDate".
+            */
+            vs[_founder].tgeFund[_vestId][_investor] = vs[_founder].tgePercentage[_vestId][_investor] * vs[_founder].depositsOfFounderTokensToInvestor[_vestId][_investor] / 100;
+            /*REMAININGFUND:
+            1. This will divide the fund based on installments.
+            */
+            vs[_founder].remainingFundForInstallments[_vestId][_investor] = _amount - vs[_founder].tgeFund[_vestId][_investor];
 
+            vs[_founder].installmentAmount[_vestId][_investor] = vs[_founder].remainingFundForInstallments[_vestId][_investor] / _vestingMonths;
+            // whitelistedTokens[_symbol] = _tokenAddress;
+            // ERC20(whitelistedTokens[_symbol]).transferFrom(_founder, address(this), _amount);
+        }else{
+            revert("The founder is not registered yet");
+        }
+    }
 
-//         }
-//     }
+    function withdrawTGEFund(address _investor,address _founder, uint _vestId, bytes32 _symbol) public {
+        require(msg.sender == _investor,"The connected wallet is not investor wallet");
+        if(block.timestamp >= vs[_founder].tgeDate[_vestId][_investor]){
+            ERC20(whitelistedTokens[_symbol]).transfer(msg.sender, vs[_founder].tgeFund[_vestId][_investor]);
+        }else{
+            revert("The transaction has failed or error");
+        }
+    }
 
-
-//     function getWhitelistedTokenAddresses(bytes32 token) external view returns(address) {
-//         return whitelistedTokens[token];
-//     }
-
-
-
-// }
+    function withdrawVestingInstallment(address _investor, address _founder, uint _vestId, uint _projId, uint _installmentAmount) public {
+        require(msg.sender == _investor,"The connected wallet is not investor wallet");
+        require(block.timestamp >= vs[_founder].vestingStartDate[_vestId][_investor], "The vesting start date has not started yet");
+    }
+    
+}
