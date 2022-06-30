@@ -1445,6 +1445,7 @@ contract Vesting{
         return vs[_founder].remainingFundForInstallments[_vestId][_investor];
     }
 
+    // new read function added
     function investorUnlockedFund(address _founder, address _investor, uint _vestId) public view returns(uint){
         uint unlockedAmount = 0;
         if(block.timestamp >= vs[_founder].tgeDate[_vestId][_investor]){
