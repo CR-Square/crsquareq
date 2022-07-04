@@ -1344,7 +1344,7 @@ contract Vesting{
             // whitelistedTokens[_symbol] = _tokenAddress;
             ERC20(whitelistedTokens[_symbol]).transferFrom(_founder, address(this), _amount);
             for(uint i = 1; i <= _vestingMonths; i++){
-                vestingDues[_vestId][_investor]._date[i] = _vestingStartDate + (i * 2 minutes);
+                vestingDues[_vestId][_investor]._date[i] = _vestingStartDate + (i * 30 days);
                 vestingDues[_vestId][_investor]._status[i] = false;
                 vestingDues[_vestId][_investor]._fund[i] =  vs[_founder].installmentAmount[_vestId][_investor];
             }
