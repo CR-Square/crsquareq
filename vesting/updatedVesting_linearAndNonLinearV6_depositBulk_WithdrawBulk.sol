@@ -1391,7 +1391,7 @@ contract Vesting{
             vs[msg.sender].remainingFundForInstallments[_vestId][_investor] = _amount - vs[msg.sender].tgeFund[_vestId][_investor];
             vs[msg.sender].installmentAmount[_vestId][_investor] = vs[msg.sender].remainingFundForInstallments[_vestId][_investor] / _vestingMonths;
             for(uint j = 1; j <= _vestingMonths; j++){
-                vestingDues[_vestId][_investor]._date[j] = _vestingStartDate + (j * 2 minutes);
+                vestingDues[_vestId][_investor]._date[j] = _vestingStartDate + (j * 30 days);
                 vestingDues[_vestId][_investor]._status[j] = false;
                 vestingDues[_vestId][_investor]._fund[j] =  vs[msg.sender].installmentAmount[_vestId][_investor];
             }
