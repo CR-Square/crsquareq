@@ -948,6 +948,7 @@ Validation Function:
 
         uint sendOnly10Percent = _amount * 10/100;
         initialTenPercentOfInvestor[_projectId][_investor] += sendOnly10Percent;
+        _depositStatusByInvestor[_projectId][_investor] = true;
         initialNinentyInvestor[_projectId][_investor] -= initialTenPercentOfInvestor[_projectId][_investor];
         founderLinkInvestorInitialProposal[_investor][_initialId]._initial10PercentOfInvestor = initialTenPercentOfInvestor[_projectId][_investor]; // This reads 10% of investor
         es[_projectId][_founder] += initialNinentyInvestor[_projectId][_investor]; // This reads total 90% balance of different investors
@@ -1259,6 +1260,16 @@ Validation Function:
         return initialTenPercentOfInvestor[_projectId][_investor];
     }
 
+    /*
+    This function outputs bool if the investor has already invested to the initial setup.
+    */  
+
+    mapping(uint => mapping(address => bool)) private _depositStatusByInvestor;
+
+    function  _depositStatus(uint _projectId, address _investor) public view returns(bool){
+        return _depositStatusByInvestor[_projectId][_investor];
+    }
+
 }
 
 pragma solidity ^0.8.15;
@@ -1312,41 +1323,48 @@ contract Vesting{
 
     mapping(uint => mapping(address => uint)) private investorWithdrawBalance;
 
-    function whitelistToken(bytes32 _symbol, address _founderCoinAddress) public returns(address){
-        return whitelistedTokens[_symbol] = _founderCoinAddress;
+    // function whitelistToken(bytes32 _symbol, address _founderCoinAddress) public returns(address){
+    //     return whitelistedTokens[_symbol] = _founderCoinAddress;
+    // }
+
+    struct founderSetup{
+        address founder;
+        address founderSMAddress;
+        address founderCoinAddress;
     }
 
 // Method: LINEAR
-    function depositFounderLinearTokens(uint _tgeFund, address _founder, address _founderSmartContractAd, bytes32 _symbol, uint _vestId, uint _amount, address _investor, uint _tgeDate, uint _vestingStartDate, uint _vestingMonths, uint _vestingMode) public {
-        require(msg.sender == _founder,"The connected wallet is not founder wallet");
-        Founder f = Founder(_founderSmartContractAd);   // Instance from the founder smart contract. 
+    function depositFounderLinearTokens(uint _tgeFund, founderSetup memory _f, bytes32 _symbol, uint _vestId, uint _amount, address _investor, uint _tgeDate, uint _vestingStartDate, uint _vestingMonths, uint _vestingMode) public {
+        require(msg.sender == _f.founder,"The connected wallet is not founder wallet");
+        Founder f = Founder(_f.founderSMAddress);   // Instance from the founder smart contract. 
         // uint _tgePercentage;
         uint _founderDeposit;
-        if(f.verifyFounder(_founder) == true){
-            vs[_founder].depositsOfFounderTokensToInvestor[_vestId][_investor] = _amount; // 1 deposit
-            _founderDeposit = vs[_founder].depositsOfFounderTokensToInvestor[_vestId][_investor];
-            vs[_founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] = _amount;
-            vs[_founder].tgeDate[_vestId][_investor] = _tgeDate; // 3 unix
+        if(f.verifyFounder(_f.founder) == true){
+            vs[_f.founder].depositsOfFounderTokensToInvestor[_vestId][_investor] = _amount; // 1 deposit
+            _founderDeposit = vs[_f.founder].depositsOfFounderTokensToInvestor[_vestId][_investor];
+            vs[_f.founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] = _amount;
+            vs[_f.founder].tgeDate[_vestId][_investor] = _tgeDate; // 3 unix
             // vs[_founder].tgePercentage[_vestId][_investor] = _tgePercent;
             // _tgePercentage = vs[_founder].tgePercentage[_vestId][_investor];
-            vs[_founder].vestingStartDate[_vestId][_investor] = _vestingStartDate; // 4 unix
-            vs[_founder].vestingMonths[_vestId][_investor] = _vestingMonths; // 5 plain
+            vs[_f.founder].vestingStartDate[_vestId][_investor] = _vestingStartDate; // 4 unix
+            vs[_f.founder].vestingMonths[_vestId][_investor] = _vestingMonths; // 5 plain
             /* TGEFUND:
             1. This gives use the balance of tge fund available for the investor to withdraw.
             2. makes this available for the investor to withdraw after "_tgeDate".
             */
-            vs[_founder].tgeFund[_vestId][_investor] = _tgeFund;
+            vs[_f.founder].tgeFund[_vestId][_investor] = _tgeFund;
             /*REMAININGFUND:
             1. This will divide the fund based on installments.
             */
-            vs[_founder].remainingFundForInstallments[_vestId][_investor] = _amount - vs[_founder].tgeFund[_vestId][_investor];
-            vs[_founder].installmentAmount[_vestId][_investor] = vs[_founder].remainingFundForInstallments[_vestId][_investor] / _vestingMonths;
+            vs[_f.founder].remainingFundForInstallments[_vestId][_investor] = _amount - vs[_f.founder].tgeFund[_vestId][_investor];
+            vs[_f.founder].installmentAmount[_vestId][_investor] = vs[_f.founder].remainingFundForInstallments[_vestId][_investor] / _vestingMonths;
             // whitelistedTokens[_symbol] = _tokenAddress;
-            ERC20(whitelistedTokens[_symbol]).transferFrom(_founder, address(this), _amount);
+            whitelistedTokens[_symbol] = _f.founderCoinAddress;
+            ERC20(whitelistedTokens[_symbol]).transferFrom(_f.founder, address(this), _amount);
             for(uint i = 1; i <= _vestingMonths; i++){
                 vestingDues[_vestId][_investor]._date[i] = _vestingStartDate + (i * _vestingMode * 1 days);
                 vestingDues[_vestId][_investor]._status[i] = false;
-                vestingDues[_vestId][_investor]._fund[i] =  vs[_founder].installmentAmount[_vestId][_investor];
+                vestingDues[_vestId][_investor]._fund[i] =  vs[_f.founder].installmentAmount[_vestId][_investor];
             }
             installmentCount[_vestId][_investor] = _vestingMonths;
         }else{
@@ -1368,6 +1386,7 @@ contract Vesting{
     struct forFounder{
         address _founder;
         address _founSM;
+        address _founderCoinAddress;
     }
 
     // getting struct value in array and using investors array so using double array in the smart contract
@@ -1403,7 +1422,7 @@ contract Vesting{
             }
             installmentCount[_vestId][_investor] = _vestingMonths;
         }
-        // whitelistedTokens[_symbol] = _tokenAddress;
+        whitelistedTokens[_symbol] = _f._founderCoinAddress;
         ERC20(whitelistedTokens[_symbol]).transferFrom(msg.sender, address(this), totalTokens);
     }
 
