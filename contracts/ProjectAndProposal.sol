@@ -616,7 +616,7 @@ contract ProjectAndProposal is Initializable, UUPSUpgradeable, OwnableUpgradeabl
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
     
-    address[] private allValidators;
+  address[] private allValidators;
 
 // MAPPINGS: LINKING ID TO INITIAL AND SUBSEQUENT:
     mapping(bytes32 => address) private whitelistedTokens;
@@ -861,7 +861,7 @@ Validation Function:
     address[] private ALLinvestors;
 
     address public tokenContract;
-    mapping(uint => address) public seperateContractLink;
+    mapping(uint => mapping(address => address)) public seperateContractLink;
 
     // INVESTOR DEPOSIT:
     function depositStableTokens(address _investor, address _founder, uint256 _amount, bytes32 symbol, address tokenAddress, uint _initialId, uint _projectId) external {
@@ -871,8 +871,8 @@ Validation Function:
         tokenContract = tokenAddress;
         pp_lock pp = new pp_lock(_investor, _projectId, _amount, address(this));
         whitelistedTokens[symbol] = tokenAddress;
-        seperateContractLink[_projectId] = address(pp);
-        ERC20(whitelistedTokens[symbol]).transferFrom(_investor, seperateContractLink[_projectId], _amount);
+        seperateContractLink[_projectId][_investor] = address(pp);
+        ERC20(whitelistedTokens[symbol]).transferFrom(_investor, seperateContractLink[_projectId][_investor], _amount);
         initialInvestorId[_projectId][_investor] = msg.sender;
         AI[_projectId].allInvestors.push(_investor);
         ALLinvestors.push(_investor);
@@ -903,25 +903,30 @@ Validation Function:
     -----------------------------x
    */
 
+    mapping(address => mapping(uint => bool)) private subsequentIdStatus;
+
+
     function withdrawSubsequentStableCoins(uint subs_Id, address _founder, bytes32 symbol, uint _projectId) external returns (bool withdrawStatus){
     
         require(msg.sender == _founder,"The connected wallet is not a founder wallet"); 
         if(getRejectedSubsequentProposalsCounts[_projectId] >= 3){
             revert("The project is closed, due to three subsequence validation failure");
         }
-        if(approvals[_projectId][subs_Id].length >= 3){
+        if(approvals[_projectId][subs_Id].length >= 3 && subsequentIdStatus[_founder][subs_Id] == false){
             uint i;
             for(i = 0; i < justInvestor[_projectId][_founder].length; i++){  
                 address investor = justInvestor[_projectId][_founder][i]._investor; 
                 uint Investorbalance = initialNinentyInvestor[_projectId][investor];
                 uint escrowBalance = es[_projectId][_founder];
-                uint share = (Investorbalance * subsCycleBalance[_projectId][subs_Id]) / escrowBalance;
+                uint share = (Investorbalance * subsCycleBalance[_projectId][subs_Id]) / escrowBalance; // single investor balance
+                pp_lock pp = pp_lock(seperateContractLink[_projectId][investor]);
+                uint localAmt = Investorbalance / getProjectCurrentCycle[_projectId];
+                ERC20(whitelistedTokens[symbol]).transferFrom(address(pp), _founder, localAmt);
                 initialNinentyInvestor[_projectId][investor] -= share;
                 getInvestorCurrentBalance[_projectId][investor] -= share;
             }
+            subsequentIdStatus[_founder][subs_Id] = true;
             es[_projectId][_founder] -= subsCycleBalance[_projectId][subs_Id];
-            pp_lock pp = pp_lock(seperateContractLink[_projectId]);
-            ERC20(whitelistedTokens[symbol]).transferFrom(address(pp), _founder , subsCycleBalance[_projectId][subs_Id]);
             getTotalReleasedFundsToFounderFromEscrow[_projectId][_founder] += subsCycleBalance[_projectId][subs_Id];
             projectCycle[_projectId].cycles -= 1;   // dynamic
             getProjectCurrentCycle[_projectId] = projectCycle[_projectId].cycles;
@@ -949,7 +954,7 @@ Validation Function:
         require(msg.sender == _investor,"The connected wallet is not investor wallet");
         require(initialInvestorId[_projectId][_investor] == msg.sender,"investor address is mismatch with subsequent id");
         if(getRejectedSubsequentProposalsCounts[_projectId] >= 3){
-            pp_lock pp = pp_lock(seperateContractLink[_projectId]);
+            pp_lock pp = pp_lock(seperateContractLink[_projectId][_investor]);
             ERC20(whitelistedTokens[symbol]).transferFrom(address(pp), _investor, initialNinentyInvestor[_projectId][_investor]);
             es[_projectId][_founder] -= initialNinentyInvestor[_projectId][_investor];
             getTotalProjectValue[_projectId] = es[_projectId][_founder];
@@ -966,7 +971,7 @@ Validation Function:
         require(msg.sender == _founder,"The connected wallet is not founder wallet");
         Founder f = Founder(_founderSmartContractAd);   // Instance from the founder smart contract.
         if(f.verifyFounder(_founder) == true){
-            pp_lock pp = pp_lock(seperateContractLink[_projectId]);
+            pp_lock pp = pp_lock(seperateContractLink[_projectId][_investor]);
             ERC20(whitelistedTokens[symbol]).transferFrom(address(pp), _founder, initialTenPercentOfInvestor[_projectId][_investor]);
             getInvestorCurrentBalance[_projectId][_investor] -= initialTenPercentOfInvestor[_projectId][_investor];
             getTotalReleasedFundsToFounderFromEscrow[_projectId][_founder] += initialTenPercentOfInvestor[_projectId][_investor];
@@ -1132,3 +1137,4 @@ contract pp_lock{
         ERC20(ProjectAndProposal(ppContractAd).tokenContract()).approve(ppContractAd,amount);
     }
 }
+
