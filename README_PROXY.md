@@ -6,7 +6,7 @@ OpenZeppelin suggests using the UUPS pattern as it is more gas efficient. But th
 decision of when to use UUPS is really based on several factors like the business
 requirements of the projects, and so on.
 The original motivation for UUPS was for deploying many smart contract wallets on the
-mainnet. The logic could be deployed once. The proxy could be deployed hundreds of
+mainnet/testnet. The logic could be deployed once. The proxy could be deployed hundreds of
 times for each new wallet, without spending much gas.
 As the upgrade method resides in the logic contract, the developer can choose UUPS if
 the protocol wants to remove upgradeability completely in the future.
