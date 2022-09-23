@@ -2,7 +2,7 @@ Proxy Contract Setup: UUPS Proxy:
 
 1. When should we use UUPS?
 
-OpenZeppelin suggests using the UUPS pattern as it is more gas e�cient. But the
+OpenZeppelin suggests using the UUPS pattern as it is more gas efficient. But the
 decision of when to use UUPS is really based on several factors like the business
 requirements of the projects, and so on.
 The original motivation for UUPS was for deploying many smart contract wallets on the
