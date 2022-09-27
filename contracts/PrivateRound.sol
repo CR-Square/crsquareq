@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract FounderLogin{
+contract Founder {
+    
     mapping(address => bool) private isFounder;
     address[] private pushFounders;
 
     function addFounder(address _ad) public{
-        require(msg.sender == _ad,"Connect same wallet to add 'Founder address' ");
+        require(msg.sender == _ad,"Connect same wallet to add founder address");
         isFounder[_ad] = true;
         pushFounders.push(_ad);
     }
@@ -22,10 +23,11 @@ contract FounderLogin{
 
     function getAllFounderAddress() public view returns(address[] memory){
         return pushFounders;
-    }  
+    }    
 }
 
 contract InvestorLogin{
+    
     mapping(address => bool) private isInvestor;
     address[] private pushInvestors;
 
@@ -48,12 +50,26 @@ contract InvestorLogin{
     }
 }
 
-contract PrivateRound{
+
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
+contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     mapping(address => mapping(uint => MilestoneSetup[])) private _milestone; // sets investor address to mileStones created by the founder.
     mapping(uint => mapping(address => uint)) public initialPercentage;  // round id => investor => initialPercentage   
     mapping(uint => mapping(address => address)) public seperateContractLink;  // round id => founder => uinstance contract address.   
     mapping(uint => bool) private roundIdControll;
+    address public contractOwner;
+
+    function initialize() private initializer {
+      ///@dev as there is no constructor, we need to initialise the OwnableUpgradeable explicitly
+       __Ownable_init();
+       contractOwner = msg.sender;
+    }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     struct MilestoneSetup {
         uint256 _num;
@@ -61,14 +77,13 @@ contract PrivateRound{
         uint256 _percent;
     }
 
-    address public contractOwner = msg.sender;
     address public tokenContract;
     /*
         * This dynamically changes everytime token address is submitted.
         * Either by Investor or Founder.
     */    
 
-    modifier onlyOwner(){
+    modifier onlyAdmin(){
         require(msg.sender == contractOwner,"Sender is not the owner of this contract");
         _;
     }
@@ -120,8 +135,8 @@ contract PrivateRound{
     
     function withdrawInitialPercentage(address _tokenContract, address _founderSM, uint _roundId) public { // 2% tax should be levied on the each transaction
         require(msg.sender != address(0), "The address is not valid or the address is 0");
-        FounderLogin founder = FounderLogin(_founderSM);
-        require(founder.verifyFounder(msg.sender) == true, "The address is not registered in the 'FounderLogin' contract");
+        Founder founder = Founder(_founderSM);
+        require(founder.verifyFounder(msg.sender) == true, "The address is not registered in the 'Founder' contract");
         if(initialWithdrawalStatus[_roundId][msg.sender] == true){
             revert("Initial withdrawal is already done");
         }
@@ -142,8 +157,8 @@ contract PrivateRound{
 
     function milestoneValidationRequest(address _founderSM, uint _milestoneId, uint _roundId) public {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
-        FounderLogin founder = FounderLogin(_founderSM);
-        require(founder.verifyFounder(msg.sender) == true, "The address is not registered in the 'FounderLogin' contract");
+        Founder founder = Founder(_founderSM);
+        require(founder.verifyFounder(msg.sender) == true, "The address is not registered in the 'Founder' contract");
         requestForValidation[_roundId][_milestoneId] = msg.sender;
     }
 
@@ -169,8 +184,8 @@ contract PrivateRound{
 
     function withdrawIndividualMilestoneByFounder(address _founderSM, address _investor, uint _roundId, uint _milestoneId, uint _percentage, address _tokenContract) public {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
-        FounderLogin founder = FounderLogin(_founderSM);
-        require(founder.verifyFounder(msg.sender) == true, "The address is not registered in the 'FounderLogin' contract");
+        Founder founder = Founder(_founderSM);
+        require(founder.verifyFounder(msg.sender) == true, "The address is not registered in the 'Founder' contract");
         uint unlockedAmount = 0;
         if(milestoneApprovalStatus[_roundId][_milestoneId] == 1 && milestoneWithdrawalStatus[_roundId][_milestoneId] == false){
             unlockedAmount = (totalTokensOfInvestor[_roundId][_investor] * _percentage)/ 100;
@@ -255,11 +270,11 @@ contract PrivateRound{
         }
     }
 
-    function changeAdminAddress(address _newAdmin) public onlyOwner{
+    function changeAdminAddress(address _newAdmin) public onlyAdmin{
         contractOwner = _newAdmin;
     }
 
-    function withdrawTaxTokens(address _tokenContract) public onlyOwner { // All the taxed tokens are there in the contract itself. no instance is created
+    function withdrawTaxTokens(address _tokenContract) public onlyAdmin { // All the taxed tokens are there in the contract itself. no instance is created
         require(msg.sender != address(0), "Invalid address");
         ERC20(_tokenContract).transfer(msg.sender,  taxedTokens[_tokenContract]);
         taxedTokens[_tokenContract] = 0;

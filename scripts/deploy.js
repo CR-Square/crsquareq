@@ -2,7 +2,7 @@ const hre = require("hardhat");
 
 let contract_1;
 let contract_2;
-// let contract_3;
+let contract_3;
 let contract_4;
 
 async function deployFactory(){
@@ -19,12 +19,12 @@ async function deployFounder(){
     console.log("Founder contract address -->", deployC_2.address);
 }
 
-// async function deployProjectAndProposal(){
-//     const setup_3 = await hre.ethers.getContractFactory("contracts/ProjectAndProposal.sol:ProjectAndProposal");
-//     const deployC_3 = await setup_3.deploy();
-//     contract_3 = await deployC_3.deployed();
-//     console.log("ProjectAndProposal contract address -->", deployC_3.address);
-// }
+async function deployProjectAndProposal(){
+    const setup_3 = await hre.ethers.getContractFactory("contracts/ProjectAndProposal.sol:ProjectAndProposal");
+    const deployC_3 = await setup_3.deploy();
+    contract_3 = await deployC_3.deployed();
+    console.log("ProjectAndProposal contract address -->", deployC_3.address);
+}
 
 async function deployVesting(){
     const setup_4 = await hre.ethers.getContractFactory("contracts/Vesting.sol:Vesting");
@@ -42,9 +42,9 @@ async function batchCall(){
         console.log(err);
     })
     
-    // await deployProjectAndProposal().catch((err) =>{
-    //     console.log(err);
-    // })
+    await deployProjectAndProposal().catch((err) =>{
+        console.log(err);
+    })
     
     await deployVesting().catch((err) =>{
         console.log(err);
