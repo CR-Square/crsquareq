@@ -10,7 +10,13 @@ a. To register as founder, the respective founder needs to connect wallet to the
 b. using "verifyFounder" whether connected wallet is registered or not.
 c. using "getAllFounderAddress" All registered founder details can be checked.
 
-3. projectAndProposal Smart Contract: 
+3. InvestorLogin Smart Contract: (For founders to the smart contract) - PrivateRound
+
+a. To register as Investor, the respective Investor needs to connect wallet to the smart contract and register.
+b. using "verifyInvestor" whether connected wallet is registered or not.
+c. using "getAllInvestorAddress" All registered founder details can be checked.
+
+4. projectAndProposal Smart Contract: 
 
 a. using "setFounderAndCycleForTheProject" - The founder should connect wallet and set the respective details.
 b. using "setInitialId" - The funds in the smart contract are secured by confidential id's, founder has access to this function.
@@ -21,7 +27,7 @@ f. using "Validation" - Once the setup is finished, registerd validators can con
 g. using "withdrawSubsequentStableCoins" - Once maximum validation is completed the founder can withdraw tokens based on the subsequent setup.
 h. using "withdrawTokensByInvestor" - If more than 3 subsequence proposal has been rejected by the validators then the funds are available back for the investors to collect.
 
-4. Vesting Smart Contract:
+5. Vesting Smart Contract:
 
 a. using "depositFounderLinearTokens" - The founder deposits FTK tokens to the investor.
 b. using "depositFounderLinearTokensToInvestors" - The founder deposits FTK tokens to batch of investors, vesting mode and vesting months are required here.
@@ -30,3 +36,16 @@ d. using "withdrawInstallmentAmount" - The investors can withdraw the FTK tokens
 e. using "withdrawBatch" - Pending or missed installment can be collected in one action by the investor.
 f. using "depositFounderNonLinearTokens" - The founder sets this action, for the non-linear setup.
 g. using "setNonLinearInstallments" - Once "depositFounderNonLinearTokens" is done, this action is needs to be done by the founder, where the installment setup for the non-linear mode is fixed for the investor.
+
+6. PrivateRound Smart Contract: (Founder -> Investor and Investor -> Founder)
+
+a. createPrivateRound - Investor creates.
+b. allowance - set allowance for the deposting tokens.
+c. depositTokens - Investor deposits tokens.
+d. withdrawInitialPercentage - Founder withdraws the initial release tokens.
+e. milestoneValidationRequest - The founder requests for milestone validation.
+f. validateMilestone - The investor validates the requested milestones.
+g. withdrawIndividualMilestoneByFounder - The founder withdraws the tokens after successful validation of milestones.
+h. batchWithdrawByInvestors - The investor withdraws the token if the project is canceled.
+i. withdrawIndividualMilestoneByInvestor - The investor withdraws for individual milestones.
+j. withdrawTaxTokens - The founder withdraws the taxed tokens
