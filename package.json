@@ -1,0 +1,32 @@
+{
+  "name": "cr_guardian_hardhat",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "deploy-contract": "npx hardhat run scripts/deploy.js --network goerli",
+    "proxyPP": "npx hardhat run scripts/proxyPP.js --network goerli",
+    "deploy-contract-local": "npx hardhat run scripts/deploy.js --network localhost",
+    "test_factory": "npx hardhat test test/test_factory.js --network polygon_mumbai",
+    "test_founder": "npx hardhat test test/test_founder.js --network polygon_mumbai",
+    "test_pp": "npx hardhat test test/test_projectAndProposal.js --network polygon_mumbai",
+    "test_vesting": "npx hardhat test test/test_vesting.js --network polygon_mumbai",
+    "test": "npx hardhat test --network goerli",
+    "deploy": "npx hardhat run scripts/deploy.js --network rinkeby"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^1.0.2",
+    "@nomicfoundation/hardhat-toolbox": "^1.0.2",
+    "@nomiclabs/hardhat-etherscan": "^3.1.0",
+    "@openzeppelin/contracts": "^4.7.2",
+    "@openzeppelin/contracts-upgradeable": "^4.7.3",
+    "@openzeppelin/hardhat-upgrades": "^1.20.0",
+    "dotenv": "^16.0.1",
+    "hardhat": "^2.10.1",
+    "hardhat-contract-sizer": "^2.6.1",
+    "web3": "^1.7.4"
+  }
+}
