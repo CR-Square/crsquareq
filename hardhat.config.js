@@ -24,7 +24,7 @@ module.exports = {
       accounts: [FOUNDER_PVT_KEY,INVESTOR1_PVT_KEY,INVESTOR2_PVT_KEY,V1_PVT_KEY,V2_PVT_KEY,V3_PVT_KEY,
         V4_PVT_KEY]
     },
-    polygon_mumbai: {
+    mumbai: {
       url:P_MUMBAI,   
       accounts: [FOUNDER_PVT_KEY,INVESTOR1_PVT_KEY,INVESTOR2_PVT_KEY,V1_PVT_KEY,V2_PVT_KEY,V3_PVT_KEY,
         V4_PVT_KEY],
@@ -41,8 +41,8 @@ module.exports = {
   },
   etherscan : {
     apiKey : {
-      goerli:ES_API
-    }
+      polygonMumbai:ES_API_POLYSCAN
+    },
   },
   mocha: {
     timeout: 160000
