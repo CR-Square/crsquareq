@@ -40,7 +40,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     mapping(uint => bool) private roundIdControll;
     address public contractOwner;
 
-    function initialize() private initializer {
+    function initialize() private initializer onlyProxy{
       ///@dev as there is no constructor, we need to initialise the OwnableUpgradeable explicitly
        __Ownable_init();
        contractOwner = msg.sender;

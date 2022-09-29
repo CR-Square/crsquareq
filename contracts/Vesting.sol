@@ -13,7 +13,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     mapping(bytes32 => address) private whitelistedTokens;
 
-    function initialize() private initializer {
+    function initialize() private initializer onlyProxy{
       ///@dev as there is no constructor, we need to initialise the OwnableUpgradeable explicitly
        __Ownable_init();
     }
