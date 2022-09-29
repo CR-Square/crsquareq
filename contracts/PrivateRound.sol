@@ -95,6 +95,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     function depositTokens(address _tokenContract, address _investorSM, address _founder, uint _tokens, uint _roundId) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         require(_investorSM != address(0), "The smart contract address is invalid");
+        require(_tokenContract != address(0), "The smart contract address is invalid");
         InvestorLogin investor = InvestorLogin(_investorSM);
         require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
         tokenContract = _tokenContract;
@@ -296,7 +297,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
             uint id = _milestone[_investor][_roundId][i]._num;
             if(milestoneApprovalStatus[_roundId][id] == 1 && !milestoneWithdrawalStatus[_roundId][id]){
                 unlockedTokens += (totalTokensOfInvestor[_roundId][_investor] * _milestone[_investor][_roundId][i]._percent)/ 100;
-            } else if(milestoneApprovalStatus[_roundId][id] == 1 && milestoneWithdrawalStatus[_roundId][_milestone[_investor][_roundId][i]._num] == true){
+            } else if(milestoneApprovalStatus[_roundId][id] == 1 && milestoneWithdrawalStatus[_roundId][_milestone[_investor][_roundId][i]._num]){
                 uint beforeTax = (totalTokensOfInvestor[_roundId][_investor] * _milestone[_investor][_roundId][i]._percent) / 100;
                 uint tax = (2 * beforeTax)/ 100;
                 withdrawnTokens += beforeTax - tax;
