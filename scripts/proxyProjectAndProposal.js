@@ -1,9 +1,7 @@
 const {ethers, upgrades} = require("hardhat");
 
-//contract deployment:
-
 async function setup(){
-    console.log("This setup deploys two contracts please check the wallet address");
+    console.log("This setup deploys two contracts please check the deployed wallet address");
     const baseC = await ethers.getContractFactory("ProjectAndProposal");
     const deployC = await upgrades.deployProxy(baseC);
     await deployC.deployed();
