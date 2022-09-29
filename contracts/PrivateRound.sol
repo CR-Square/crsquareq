@@ -7,13 +7,13 @@ contract Founder {
     mapping(address => bool) private isFounder;
     address[] private pushFounders;
 
-    function addFounder(address _ad) public{
+    function addFounder(address _ad) external{
         require(msg.sender == _ad,"Connect same wallet to add founder address");
         isFounder[_ad] = true;
         pushFounders.push(_ad);
     }
 
-    function verifyFounder(address _ad) public view returns(bool condition){
+    function verifyFounder(address _ad) external view returns(bool condition){
         if(isFounder[_ad] == true){
             return true;
         }else{
@@ -21,7 +21,7 @@ contract Founder {
         }
     }
 
-    function getAllFounderAddress() public view returns(address[] memory){
+    function getAllFounderAddress() external view returns(address[] memory){
         return pushFounders;
     }    
 }
@@ -31,13 +31,13 @@ contract InvestorLogin{
     mapping(address => bool) private isInvestor;
     address[] private pushInvestors;
 
-    function addInvestor(address _ad) public{
+    function addInvestor(address _ad) external{
         require(msg.sender == _ad,"Connect same wallet to add 'Investor address' ");
         isInvestor[_ad] = true;
         pushInvestors.push(_ad);
     }
 
-    function verifyInvestor(address _ad) public view returns(bool condition){
+    function verifyInvestor(address _ad) external view returns(bool condition){
         if(isInvestor[_ad] == true){
             return true;
         }else{
@@ -45,7 +45,7 @@ contract InvestorLogin{
         }
     }
 
-    function getAllInvestorAddress() public view returns(address[] memory){
+    function getAllInvestorAddress() external view returns(address[] memory){
         return pushInvestors;
     }
 }
@@ -92,7 +92,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         * WRITE FUNCTIONS:
     */
 
-    function createPrivateRound(uint _roundId, address _investorSM, uint _initialPercentage, MilestoneSetup[] memory _mile) public {
+    function createPrivateRound(uint _roundId, address _investorSM, uint _initialPercentage, MilestoneSetup[] memory _mile) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         InvestorLogin investor = InvestorLogin(_investorSM);
         require(investor.verifyInvestor(msg.sender) == true, "The address is not registered in the 'InvestorLogin' contract");
@@ -114,7 +114,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     mapping(uint => mapping(address => bool)) private initialWithdrawalStatus;
     mapping(uint => address) private contractAddress;
 
-    function depositTokens(address _tokenContract, address _investorSM, address _founder, uint _tokens, uint _roundId) public {
+    function depositTokens(address _tokenContract, address _investorSM, address _founder, uint _tokens, uint _roundId) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         InvestorLogin investor = InvestorLogin(_investorSM);
         require(investor.verifyInvestor(msg.sender) == true, "The address is not registered in the 'InvestorLogin' contract");
@@ -122,18 +122,18 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         FundLock fl = new FundLock(msg.sender, _roundId, _tokens, address(this));
         seperateContractLink[_roundId][_founder] = address(fl);
         contractAddress[_roundId] = address(fl);
-        ERC20(_tokenContract).transferFrom(msg.sender, seperateContractLink[_roundId][_founder], _tokens);
         remainingTokensOfInvestor[_roundId][msg.sender] = _tokens;
         totalTokensOfInvestor[_roundId][msg.sender] = _tokens;
         uint tax = _tokens * initialPercentage[_roundId][msg.sender] / 100;
         initialTokensForFounder[_roundId][_founder] += tax;
         remainingTokensOfInvestor[_roundId][msg.sender] -= initialTokensForFounder[_roundId][_founder];
+        ERC20(_tokenContract).transferFrom(msg.sender, seperateContractLink[_roundId][_founder], _tokens);
     }
 
     mapping(address => uint) public taxedTokens;
     mapping(uint => uint) private withdrawalFee;
     
-    function withdrawInitialPercentage(address _tokenContract, address _founderSM, uint _roundId) public { // 2% tax should be levied on the each transaction
+    function withdrawInitialPercentage(address _tokenContract, address _founderSM, uint _roundId) external { // 2% tax should be levied on the each transaction
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         Founder founder = Founder(_founderSM);
         require(founder.verifyFounder(msg.sender) == true, "The address is not registered in the 'Founder' contract");
@@ -145,8 +145,8 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         taxedTokens[_tokenContract] += tax;
         initialTokensForFounder[_roundId][msg.sender] -= tax;
         withdrawalFee[_roundId] += tax;
-        ERC20(_tokenContract).transferFrom(address(fl), msg.sender, initialTokensForFounder[_roundId][msg.sender]);
         initialWithdrawalStatus[_roundId][msg.sender] = true;
+        ERC20(_tokenContract).transferFrom(address(fl), msg.sender, initialTokensForFounder[_roundId][msg.sender]);
     }
 
     mapping(uint => mapping(uint => uint)) private rejectedByInvestor;
@@ -155,14 +155,14 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     mapping(uint => mapping(uint => int)) private milestoneApprovalStatus; // 0 - means default null, 1 - means approves, -1 means rejected.
     mapping(uint => mapping(uint => bool)) private milestoneWithdrawalStatus;
 
-    function milestoneValidationRequest(address _founderSM, uint _milestoneId, uint _roundId) public {
+    function milestoneValidationRequest(address _founderSM, uint _milestoneId, uint _roundId) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         Founder founder = Founder(_founderSM);
         require(founder.verifyFounder(msg.sender) == true, "The address is not registered in the 'Founder' contract");
         requestForValidation[_roundId][_milestoneId] = msg.sender;
     }
 
-    function validateMilestone(address _investorSM, uint _milestoneId, uint _roundId, bool _status) public {
+    function validateMilestone(address _investorSM, uint _milestoneId, uint _roundId, bool _status) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         InvestorLogin investor = InvestorLogin(_investorSM);
         require(investor.verifyInvestor(msg.sender) == true, "The address is not registered in the 'InvestorLogin' contract");
@@ -182,7 +182,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     bool private defaultedByFounder;
 
-    function withdrawIndividualMilestoneByFounder(address _founderSM, address _investor, uint _roundId, uint _milestoneId, uint _percentage, address _tokenContract) public {
+    function withdrawIndividualMilestoneByFounder(address _founderSM, address _investor, uint _roundId, uint _milestoneId, uint _percentage, address _tokenContract) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         Founder founder = Founder(_founderSM);
         require(founder.verifyFounder(msg.sender) == true, "The address is not registered in the 'Founder' contract");
@@ -204,7 +204,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         } 
     }
 
-    function withdrawIndividualMilestoneByInvestor(address _investorSM, uint _roundId, address _founder, uint _milestoneId, uint _percentage, address _tokenContract) public{
+    function withdrawIndividualMilestoneByInvestor(address _investorSM, uint _roundId, address _founder, uint _milestoneId, uint _percentage, address _tokenContract) external{
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         InvestorLogin investor = InvestorLogin(_investorSM);
         require(investor.verifyInvestor(msg.sender) == true, "The address is not registered in the 'InvestorLogin' contract");
@@ -237,7 +237,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     mapping(address => mapping(uint => uint)) private investorWithdrawnTokens;  // investor add => roundid => withdrawn token
 
-    function batchWithdrawByInvestors(address _investorSM, uint _roundId, address _founder, address _tokenContract) public{
+    function batchWithdrawByInvestors(address _investorSM, uint _roundId, address _founder, address _tokenContract) external{
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         InvestorLogin investor = InvestorLogin(_investorSM);
         require(investor.verifyInvestor(msg.sender) == true, "The address is not registered in the 'InvestorLogin' contract");
@@ -270,33 +270,34 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         }
     }
 
-    function changeAdminAddress(address _newAdmin) public onlyAdmin{
+    function changeAdminAddress(address _newAdmin) external onlyAdmin{
+        require(msg.sender != address(0), "Invalid address");
         contractOwner = _newAdmin;
     }
 
-    function withdrawTaxTokens(address _tokenContract) public onlyAdmin { // All the taxed tokens are there in the contract itself. no instance is created
+    function withdrawTaxTokens(address _tokenContract) external onlyAdmin { // All the taxed tokens are there in the contract itself. no instance is created
         require(msg.sender != address(0), "Invalid address");
-        ERC20(_tokenContract).transfer(msg.sender,  taxedTokens[_tokenContract]);
         taxedTokens[_tokenContract] = 0;
+        ERC20(_tokenContract).transfer(msg.sender,  taxedTokens[_tokenContract]);
     }   
 
     /*
         * READ FUNCTIONS:
     */
 
-    function milestoneStatusChk(uint roundId, uint milestoneId) public view returns(int){
+    function milestoneStatusChk(uint roundId, uint milestoneId) external view returns(int){
         return milestoneApprovalStatus[roundId][milestoneId];
     }
 
-    function getContractAddress(uint _roundId) public view returns(address smartContractAddress){
+    function getContractAddress(uint _roundId) external view returns(address smartContractAddress){
         return contractAddress[_roundId];
     }
 
-    function projectStatus(uint _roundId) public view returns(bool projectLiveOrNot){
+    function projectStatus(uint _roundId) external view returns(bool projectLiveOrNot){
         return projectCancel[_roundId];
     }
 
-    function tokenStatus(uint _roundId, address _founder, address _investor) public view returns(uint unlockedAmount, uint lockedAmount, uint withdrawnTokensByFounder){
+    function tokenStatus(uint _roundId, address _founder, address _investor) external view returns(uint unlockedAmount, uint lockedAmount, uint withdrawnTokensByFounder){
         uint unlockedTokens = 0;
         uint lockedTokens = 0;
         uint withdrawnTokens = 0;
@@ -323,23 +324,23 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         );
     }
 
-    function investorWithdrawnToken(address _investor, uint _roundId) public view returns(uint investorWithdrawnTokenNumber){
+    function investorWithdrawnToken(address _investor, uint _roundId) external view returns(uint investorWithdrawnTokenNumber){
         return investorWithdrawnTokens[_investor][_roundId];
     }
 
-    function readTaxFee(uint _roundId) public view returns(uint transactionFee){
+    function readTaxFee(uint _roundId) external view returns(uint transactionFee){
         return withdrawalFee[_roundId];
     }
 
-    function milestoneWithdrawStatus(uint _roundId, uint _milestoneId) public view returns(bool){
+    function milestoneWithdrawStatus(uint _roundId, uint _milestoneId) external view returns(bool){
         return milestoneWithdrawalStatus[_roundId][_milestoneId];
     }
 
-    function initialWithdrawStatus(uint _roundId, address _founder) public view returns(bool initialWithdraw){
+    function initialWithdrawStatus(uint _roundId, address _founder) external view returns(bool initialWithdraw){
         return initialWithdrawalStatus[_roundId][_founder];
     }
 
-    function availableTaxTokens(address _tokenContract) public view returns(uint taxTokens){
+    function availableTaxTokens(address _tokenContract) external view returns(uint taxTokens){
         return taxedTokens[_tokenContract];
     }
 }
