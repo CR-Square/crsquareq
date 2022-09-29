@@ -2,30 +2,8 @@
 pragma abicoder v2;
 pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "./Founder.sol";
 
-contract Founder{
-    
-    mapping(address => bool) private isFounder;
-    address[] private pushFounders;
-
-    function addFounder(address _ad) public{
-        require(msg.sender == _ad,"Connect same wallet to add founder address");
-        isFounder[_ad] = true;
-        pushFounders.push(_ad);
-    }
-
-    function verifyFounder(address _ad) public view returns(bool condition){
-        if(isFounder[_ad] == true){
-            return true;
-        }else{
-            return false;
-        }
-    }
-
-    function getAllFounderAddress() public view returns(address[] memory){
-        return pushFounders;
-    }    
-}
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -72,7 +50,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     }
 
 // Method: LINEAR
-    function depositFounderLinearTokens(uint _tgeFund, founderSetup memory _f, bytes32 _symbol, uint _vestId, uint _amount, address _investor, uint _tgeDate, uint _vestingStartDate, uint _vestingMonths, uint _vestingMode) public {
+    function depositFounderLinearTokens(uint _tgeFund, founderSetup memory _f, bytes32 _symbol, uint _vestId, uint _amount, address _investor, uint _tgeDate, uint _vestingStartDate, uint _vestingMonths, uint _vestingMode) external {
         require(msg.sender == _f.founder,"The connected wallet is not founder wallet");
         Founder f = Founder(_f.founderSMAddress);   // Instance from the founder smart contract. 
         uint _founderDeposit;
@@ -96,7 +74,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
                 vestingDues[_vestId][_investor]._fund[i+1] =  vs[_f.founder].installmentAmount[_vestId][_investor];
             }
             installmentCount[_vestId][_investor] = _vestingMonths;
-            ERC20(whitelistedTokens[_symbol]).transferFrom(_f.founder, address(this), _amount);
+            require(ERC20(whitelistedTokens[_symbol]).transferFrom(_f.founder, address(this), _amount) == true, "transaction failed or reverted");
         }else{
             revert("The founder is not registered yet");
         }
@@ -122,7 +100,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     
     // use the mapping to get the data of investor based on vestid and index number subject to the struct array;
     // getting struct value in array and using investors array so using double array in the smart contract
-    function depositFounderLinearTokensToInvestors(forFounder memory _f, bytes32 _symbol, uint _vestId, uint _tgeDate, uint _vestingStartDate, uint _vestingMonths, investors[] memory _investors, uint _vestingMode) public {
+    function depositFounderLinearTokensToInvestors(forFounder memory _f, bytes32 _symbol, uint _vestId, uint _tgeDate, uint _vestingStartDate, uint _vestingMonths, investors[] memory _investors, uint _vestingMode) external {
         require(msg.sender == _f._founder,"The connected wallet is not founder wallet");
         Founder f = Founder(_f._founSM);   // Instance from the founder smart contract. 
         require(f.verifyFounder(_f._founder) == true,"The founder is not registered yet");
@@ -143,7 +121,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
             vs[msg.sender].tgeFund[_vestId][_investor] = (_investors[i]._tgeFund * (10**18))/10000;
             vs[msg.sender].remainingFundForInstallments[_vestId][_investor] = _amount - vs[msg.sender].tgeFund[_vestId][_investor];
             vs[msg.sender].installmentAmount[_vestId][_investor] = vs[msg.sender].remainingFundForInstallments[_vestId][_investor] / _vestingMonths;
-            ERC20(whitelistedTokens[_symbol]).transferFrom(msg.sender, _investors[i]._investor, (_investors[i]._tokens * (10**18))/10000);
+            require(ERC20(whitelistedTokens[_symbol]).transferFrom(msg.sender, _investors[i]._investor, (_investors[i]._tokens * (10**18))/10000) == true, "transaction failed or reverted");
             for(uint j = 0; j < _vestingMonths; j++){
                 vestingDues[_vestId][_investor]._date[j+1] = _vestingStartDate + (j * _vestingMode * 1 days);
                 vestingDues[_vestId][_investor]._status[j+1] = false;
@@ -159,7 +137,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
             vs[_founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] -= vs[_founder].tgeFund[_vestId][_investor];
             investorWithdrawBalance[_vestId][_investor] += vs[_founder].tgeFund[_vestId][_investor];
             vs[_founder].tgeFund[_vestId][_investor] = 0; 
-            ERC20(whitelistedTokens[_symbol]).transfer(msg.sender, vs[_founder].tgeFund[_vestId][_investor]);
+            require(ERC20(whitelistedTokens[_symbol]).transfer(msg.sender, vs[_founder].tgeFund[_vestId][_investor]) == true, "transaction failed or reverted");
         }else{
             revert("The transaction has failed because the TGE time has not reached yet");
         }
@@ -177,7 +155,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
                 vs[_founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] -= amt;
                 investorWithdrawBalance[_vestId][_investor] += amt;
                 vestingDues[_vestId][_investor]._status[_index] = true;
-                ERC20(whitelistedTokens[_symbol]).transfer(_investor, amt);   // update this line
+                require(ERC20(whitelistedTokens[_symbol]).transfer(_investor, amt) == true, "transaction failed or executed");   // update this line
             }else{
                 revert("Already Withdrawn");
             }
@@ -203,7 +181,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
             }
             vs[_founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] -= unlockedAmount;
             investorWithdrawBalance[_vestId][_investor] += unlockedAmount;
-            ERC20(whitelistedTokens[_symbol]).transfer(msg.sender, unlockedAmount);
+            require(ERC20(whitelistedTokens[_symbol]).transfer(msg.sender, unlockedAmount) == true, "transaction failed or executed");
         }
     }
 
@@ -284,7 +262,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
             vs[_founder].tgeDate[_vestId][_investor] = _tgeDate; // 3 unix
             vs[_founder].tgeFund[_vestId][_investor] = _tgeFund;
             vs[_founder].remainingFundForInstallments[_vestId][_investor] = _amount - vs[_founder].tgeFund[_vestId][_investor];
-            ERC20(whitelistedTokens[_symbol]).transferFrom(_founder, address(this), _amount);
+            require(ERC20(whitelistedTokens[_symbol]).transferFrom(_founder, address(this), _amount) == true, "transaction failes or reverted");
         }else{
             revert("The founder is not registered yet");
         }
