@@ -52,6 +52,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 // Method: LINEAR
     function depositFounderLinearTokens(uint _tgeFund, founderSetup memory _f, bytes32 _symbol, uint _vestId, uint _amount, address _investor, uint _tgeDate, uint _vestingStartDate, uint _vestingMonths, uint _vestingMode) external {
         require(msg.sender == _f.founder,"The connected wallet is not founder wallet");
+        require(_f.founderSMAddress != address(0), "The contract address is invalid or address 0");
         Founder f = Founder(_f.founderSMAddress);   // Instance from the founder smart contract. 
         uint _founderDeposit;
         whitelistedTokens[_symbol] = _f.founderCoinAddress;
@@ -102,6 +103,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     // getting struct value in array and using investors array so using double array in the smart contract
     function depositFounderLinearTokensToInvestors(forFounder memory _f, bytes32 _symbol, uint _vestId, uint _tgeDate, uint _vestingStartDate, uint _vestingMonths, investors[] memory _investors, uint _vestingMode) external {
         require(msg.sender == _f._founder,"The connected wallet is not founder wallet");
+        require(_f._founSM != address(0), "The contract address is invalid or address 0");
         Founder f = Founder(_f._founSM);   // Instance from the founder smart contract. 
         require(f.verifyFounder(_f._founder),"The founder is not registered yet");
         uint totalTokens = 0;
@@ -235,6 +237,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     // create an seperate array for date and fund [][]                                                                                                   // due[] memory _dues
     function setNonLinearInstallments(address _founder, address _founderSmartContractAd, uint _vestId, address _investor,due[] memory _dues) external {
         require(msg.sender == _founder,"The connected wallet is not founder wallet");
+        require(_founderSmartContractAd != address(0), "The contract address is invalid or address 0");
         Founder f = Founder(_founderSmartContractAd);   // Instance from the founder smart contract. 
         if(f.verifyFounder(_founder)){
             uint duesAmount;
@@ -252,6 +255,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     function depositFounderNonLinearTokens(address _founder, address _founderCoinAddress, address _founderSmartContractAd, bytes32 _symbol, uint _vestId, uint _amount, address _investor, uint _tgeDate, uint _tgeFund) external{
         require(msg.sender == _founder,"The connected wallet is not founder wallet");
+        require(_founderSmartContractAd != address(0), "The contract address is invalid or address 0");
         Founder f = Founder(_founderSmartContractAd);   // Instance from the founder smart contract. 
         uint _founderDeposit;
         whitelistedTokens[_symbol] = _founderCoinAddress;

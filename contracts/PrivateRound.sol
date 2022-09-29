@@ -71,6 +71,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     function createPrivateRound(uint _roundId, address _investorSM, uint _initialPercentage, MilestoneSetup[] memory _mile) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
+        require(_investorSM != address(0), "The contract address is invalid or address 0");
         InvestorLogin investor = InvestorLogin(_investorSM);
         require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
         if(roundIdControll[_roundId] == true){
@@ -93,6 +94,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     function depositTokens(address _tokenContract, address _investorSM, address _founder, uint _tokens, uint _roundId) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
+        require(_investorSM != address(0), "The smart contract address is invalid");
         InvestorLogin investor = InvestorLogin(_investorSM);
         require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
         tokenContract = _tokenContract;
@@ -112,6 +114,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     
     function withdrawInitialPercentage(address _tokenContract, address _founderSM, uint _roundId) external { // 2% tax should be levied on the each transaction
         require(msg.sender != address(0), "The address is not valid or the address is 0");
+        require(_founderSM != address(0), "The smart contract address is invalid");
         Founder founder = Founder(_founderSM);
         require(founder.verifyFounder(msg.sender), "The address is not registered in the 'Founder' contract");
         if(initialWithdrawalStatus[_roundId][msg.sender] == true){
@@ -134,6 +137,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     function milestoneValidationRequest(address _founderSM, uint _milestoneId, uint _roundId) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
+        require(_founderSM != address(0), "The smart contract address is invalid");
         Founder founder = Founder(_founderSM);
         require(founder.verifyFounder(msg.sender), "The address is not registered in the 'Founder' contract");
         requestForValidation[_roundId][_milestoneId] = msg.sender;
@@ -141,6 +145,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     function validateMilestone(address _investorSM, uint _milestoneId, uint _roundId, bool _status) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
+        require(_investorSM != address(0), "The smart contract address is invalid");
         InvestorLogin investor = InvestorLogin(_investorSM);
         require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
         if(milestoneApprovalStatus[_roundId][_milestoneId] == 1){
@@ -161,6 +166,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     function withdrawIndividualMilestoneByFounder(address _founderSM, address _investor, uint _roundId, uint _milestoneId, uint _percentage, address _tokenContract) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
+        require(_founderSM != address(0), "The smart contract address is invalid");
         Founder founder = Founder(_founderSM);
         require(founder.verifyFounder(msg.sender), "The address is not registered in the 'Founder' contract");
         uint unlockedAmount = 0;
@@ -183,6 +189,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     function withdrawIndividualMilestoneByInvestor(address _investorSM, uint _roundId, address _founder, uint _milestoneId, uint _percentage, address _tokenContract) external{
         require(msg.sender != address(0), "The address is not valid or the address is 0");
+        require(_investorSM != address(0), "The smart contract address is invalid");
         InvestorLogin investor = InvestorLogin(_investorSM);
         require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
         uint count = 0;
@@ -216,6 +223,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     function batchWithdrawByInvestors(address _investorSM, uint _roundId, address _founder, address _tokenContract) external{
         require(msg.sender != address(0), "The address is not valid or the address is 0");
+        require(_investorSM != address(0), "The smart contract address is invalid");
         InvestorLogin investor = InvestorLogin(_investorSM);
         require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
         uint count = 0;
@@ -249,6 +257,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     function changeAdminAddress(address _newAdmin) external onlyAdmin{
         require(msg.sender != address(0), "Invalid address");
+        require(_newAdmin != address(0), "The wallet address is invalid or address 0");
         contractOwner = _newAdmin;
     }
 
