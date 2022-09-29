@@ -15,7 +15,7 @@ contract InvestorLogin{
     }
 
     function verifyInvestor(address _ad) external view returns(bool condition){
-        if(isInvestor[_ad] == true){
+        if(isInvestor[_ad]){
             return true;
         }else{
             return false;
@@ -74,7 +74,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         require(_investorSM != address(0), "The contract address is invalid or address 0");
         InvestorLogin investor = InvestorLogin(_investorSM);
         require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
-        if(roundIdControll[_roundId] == true){
+        if(roundIdControll[_roundId]){
             revert("round Id is already taken");
         }
         for(uint i = 0; i < _mile.length; ++i){
@@ -106,7 +106,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         uint tax = _tokens * initialPercentage[_roundId][msg.sender] / 100;
         initialTokensForFounder[_roundId][_founder] += tax;
         remainingTokensOfInvestor[_roundId][msg.sender] -= initialTokensForFounder[_roundId][_founder];
-        require(ERC20(_tokenContract).transferFrom(msg.sender, seperateContractLink[_roundId][_founder], _tokens) == true, "transaction failed or reverted");
+        require(ERC20(_tokenContract).transferFrom(msg.sender, seperateContractLink[_roundId][_founder], _tokens), "transaction failed or reverted");
     }
 
     mapping(address => uint) public taxedTokens;
@@ -117,7 +117,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         require(_founderSM != address(0), "The smart contract address is invalid");
         Founder founder = Founder(_founderSM);
         require(founder.verifyFounder(msg.sender), "The address is not registered in the 'Founder' contract");
-        if(initialWithdrawalStatus[_roundId][msg.sender] == true){
+        if(initialWithdrawalStatus[_roundId][msg.sender]){
             revert("Initial withdrawal is already done");
         }
         FundLock fl = FundLock(seperateContractLink[_roundId][msg.sender]);
@@ -126,7 +126,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         initialTokensForFounder[_roundId][msg.sender] -= tax;
         withdrawalFee[_roundId] += tax;
         initialWithdrawalStatus[_roundId][msg.sender] = true;
-        require(ERC20(_tokenContract).transferFrom(address(fl), msg.sender, initialTokensForFounder[_roundId][msg.sender]) == true, "transaction failed or reverted");
+        require(ERC20(_tokenContract).transferFrom(address(fl), msg.sender, initialTokensForFounder[_roundId][msg.sender]), "transaction failed or reverted");
     }
 
     mapping(uint => mapping(uint => uint)) private rejectedByInvestor;
@@ -151,9 +151,9 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         if(milestoneApprovalStatus[_roundId][_milestoneId] == 1){
             revert("The milestone is already approved");
         }
-        if(_status == true){
+        if(_status){
             milestoneApprovalStatus[_roundId][_milestoneId] = 1;
-        }else if(_status == false){
+        }else{
             rejectedByInvestor[_roundId][_milestoneId] += 1;
             milestoneApprovalStatus[_roundId][_milestoneId] = -1;
         }
@@ -181,7 +181,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
             unlockedAmount -= tax;
             withdrawalFee[_roundId] += tax;
             FundLock fl = FundLock(seperateContractLink[_roundId][msg.sender]);
-            require(ERC20(_tokenContract).transferFrom(address(fl), msg.sender, unlockedAmount) == true, "transaction failed or reverted");
+            require(ERC20(_tokenContract).transferFrom(address(fl), msg.sender, unlockedAmount), "transaction failed or reverted");
         }else{
             revert("No unlocked tokens to withdraw");
         } 
@@ -198,10 +198,10 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
                 count += 1;
             }
         }
-        if(projectCancel[_roundId] == true || count >= 2){
+        if(projectCancel[_roundId] || count >= 2){
             defaultedByFounder = true;
         }
-        if(defaultedByFounder == true){
+        if(defaultedByFounder){
             uint lockedAmount = 0;
             if(milestoneApprovalStatus[_roundId][_milestoneId] != 1){
                 lockedAmount += (totalTokensOfInvestor[_roundId][msg.sender] * _percentage) / 100;
@@ -214,7 +214,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
                 withdrawalFee[_roundId] += tax;
                 lockedAmount -= tax;
                 investorWithdrawnTokens[msg.sender][_roundId] = lockedAmount;
-                require(ERC20(_tokenContract).transferFrom(address(fl), msg.sender, lockedAmount) == true, "transaction failed or reverted"); 
+                require(ERC20(_tokenContract).transferFrom(address(fl), msg.sender, lockedAmount), "transaction failed or reverted"); 
             }
         }
     }
@@ -232,11 +232,11 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
                 count += 1;
             }
         }
-        if(projectCancel[_roundId] == true || count >= 2){
+        if(projectCancel[_roundId] || count >= 2){
             defaultedByFounder = true;
         }
         uint lockedAmount = 0;
-        if(defaultedByFounder == true){
+        if(defaultedByFounder){
             for(uint i = 0; i < _milestone[msg.sender][_roundId].length; i++){
                 if(milestoneApprovalStatus[_roundId][_milestone[msg.sender][_roundId][i]._num] != 1){
                     lockedAmount += (totalTokensOfInvestor[_roundId][msg.sender] * _milestone[msg.sender][_roundId][i]._percent) / 100;
@@ -250,7 +250,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
                 withdrawalFee[_roundId] += tax;
                 lockedAmount -= tax;
                 investorWithdrawnTokens[msg.sender][_roundId] = lockedAmount;
-                require(ERC20(_tokenContract).transferFrom(address(fl), msg.sender, lockedAmount) == true, "transaction failed or reverted"); 
+                require(ERC20(_tokenContract).transferFrom(address(fl), msg.sender, lockedAmount), "transaction failed or reverted"); 
             }
         }
     }
@@ -264,7 +264,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     function withdrawTaxTokens(address _tokenContract) external onlyAdmin { // All the taxed tokens are there in the contract itself. no instance is created
         require(msg.sender != address(0), "Invalid address");
         taxedTokens[_tokenContract] = 0;
-        require(ERC20(_tokenContract).transfer(msg.sender, taxedTokens[_tokenContract]) == true, "execution failed or reverted");
+        require(ERC20(_tokenContract).transfer(msg.sender, taxedTokens[_tokenContract]), "execution failed or reverted");
     }   
 
     /*
@@ -287,7 +287,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         uint unlockedTokens = 0;
         uint lockedTokens = 0;
         uint withdrawnTokens = 0;
-        if(initialWithdrawalStatus[_roundId][_founder] != true){
+        if(!initialWithdrawalStatus[_roundId][_founder]){
             unlockedTokens = initialTokensForFounder[_roundId][_founder];
         }else{
             withdrawnTokens = initialTokensForFounder[_roundId][_founder];
@@ -338,6 +338,6 @@ contract FundLock{
     constructor (address investor, uint roundId, uint amount, address privateRoundContractAd) {
         _contractOwner = msg.sender;
         _amount[roundId][investor] = amount;
-        require(ERC20(PrivateRound(privateRoundContractAd).tokenContract()).approve(privateRoundContractAd,amount) == true, "execution failed or reverted");
+        require(ERC20(PrivateRound(privateRoundContractAd).tokenContract()).approve(privateRoundContractAd,amount), "execution failed or reverted");
     }
 }

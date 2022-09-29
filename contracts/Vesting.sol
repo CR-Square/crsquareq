@@ -75,7 +75,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
                 vestingDues[_vestId][_investor]._fund[i+1] =  vs[_f.founder].installmentAmount[_vestId][_investor];
             }
             installmentCount[_vestId][_investor] = _vestingMonths;
-            require(ERC20(whitelistedTokens[_symbol]).transferFrom(_f.founder, address(this), _amount) == true, "transaction failed or reverted");
+            require(ERC20(whitelistedTokens[_symbol]).transferFrom(_f.founder, address(this), _amount), "transaction failed or reverted");
         }else{
             revert("The founder is not registered yet");
         }
@@ -123,7 +123,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
             vs[msg.sender].tgeFund[_vestId][_investor] = (_investors[i]._tgeFund * (10**18))/10000;
             vs[msg.sender].remainingFundForInstallments[_vestId][_investor] = _amount - vs[msg.sender].tgeFund[_vestId][_investor];
             vs[msg.sender].installmentAmount[_vestId][_investor] = vs[msg.sender].remainingFundForInstallments[_vestId][_investor] / _vestingMonths;
-            require(ERC20(whitelistedTokens[_symbol]).transferFrom(msg.sender, _investors[i]._investor, (_investors[i]._tokens * (10**18))/10000) == true, "transaction failed or reverted");
+            require(ERC20(whitelistedTokens[_symbol]).transferFrom(msg.sender, _investors[i]._investor, (_investors[i]._tokens * (10**18))/10000), "transaction failed or reverted");
             for(uint j = 0; j < _vestingMonths; j++){
                 vestingDues[_vestId][_investor]._date[j+1] = _vestingStartDate + (j * _vestingMode * 1 days);
                 vestingDues[_vestId][_investor]._status[j+1] = false;
@@ -139,7 +139,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
             vs[_founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] -= vs[_founder].tgeFund[_vestId][_investor];
             investorWithdrawBalance[_vestId][_investor] += vs[_founder].tgeFund[_vestId][_investor];
             vs[_founder].tgeFund[_vestId][_investor] = 0; 
-            require(ERC20(whitelistedTokens[_symbol]).transfer(msg.sender, vs[_founder].tgeFund[_vestId][_investor]) == true, "transaction failed or reverted");
+            require(ERC20(whitelistedTokens[_symbol]).transfer(msg.sender, vs[_founder].tgeFund[_vestId][_investor]), "transaction failed or reverted");
         }else{
             revert("The transaction has failed because the TGE time has not reached yet");
         }
@@ -151,13 +151,13 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         require(msg.sender == _investor,"The connected wallet is not investor wallet");
         uint amt;
         if(block.timestamp >= vestingDues[_vestId][_investor]._date[_index]){
-            if(vestingDues[_vestId][_investor]._status[_index] != true){
+            if(!vestingDues[_vestId][_investor]._status[_index]){
                 amt = vestingDues[_vestId][_investor]._fund[_index];
                 vs[_founder].remainingFundForInstallments[_vestId][_investor] -= amt;
                 vs[_founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] -= amt;
                 investorWithdrawBalance[_vestId][_investor] += amt;
                 vestingDues[_vestId][_investor]._status[_index] = true;
-                require(ERC20(whitelistedTokens[_symbol]).transfer(_investor, amt) == true, "transaction failed or executed");   // update this line
+                require(ERC20(whitelistedTokens[_symbol]).transfer(_investor, amt), "transaction failed or executed");   // update this line
             }else{
                 revert("Already Withdrawn");
             }
@@ -171,7 +171,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         if(installmentCount[_vestId][_investor] != 0){
             uint unlockedAmount = 0;
             for(uint i = 1; i <= installmentCount[_vestId][_investor]; i++){
-                if(vestingDues[_vestId][_investor]._date[i] <= block.timestamp && vestingDues[_vestId][_investor]._status[i] != true){
+                if(vestingDues[_vestId][_investor]._date[i] <= block.timestamp && !vestingDues[_vestId][_investor]._status[i]){
                     unlockedAmount += vestingDues[_vestId][_investor]._fund[i];
                     vestingDues[_vestId][_investor]._status[i] = true;
                 }
@@ -183,7 +183,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
             }
             vs[_founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] -= unlockedAmount;
             investorWithdrawBalance[_vestId][_investor] += unlockedAmount;
-            require(ERC20(whitelistedTokens[_symbol]).transfer(msg.sender, unlockedAmount) == true, "transaction failed or executed");
+            require(ERC20(whitelistedTokens[_symbol]).transfer(msg.sender, unlockedAmount), "transaction failed or executed");
         }
     }
 
@@ -218,7 +218,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
             unlockedAmount += vs[_founder].tgeFund[_vestId][_investor];
         }
         for(uint i = 1; i <= installmentCount[_vestId][_investor]; i++){
-            if(vestingDues[_vestId][_investor]._date[i] <= block.timestamp && vestingDues[_vestId][_investor]._status[i] != true){
+            if(vestingDues[_vestId][_investor]._date[i] <= block.timestamp && !vestingDues[_vestId][_investor]._status[i]){
                 unlockedAmount += vestingDues[_vestId][_investor]._fund[i];
             }
         }
@@ -266,7 +266,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
             vs[_founder].tgeDate[_vestId][_investor] = _tgeDate; // 3 unix
             vs[_founder].tgeFund[_vestId][_investor] = _tgeFund;
             vs[_founder].remainingFundForInstallments[_vestId][_investor] = _amount - vs[_founder].tgeFund[_vestId][_investor];
-            require(ERC20(whitelistedTokens[_symbol]).transferFrom(_founder, address(this), _amount) == true, "transaction failes or reverted");
+            require(ERC20(whitelistedTokens[_symbol]).transferFrom(_founder, address(this), _amount), "transaction failes or reverted");
         }else{
             revert("The founder is not registered yet");
         }

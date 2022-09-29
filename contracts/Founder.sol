@@ -10,7 +10,7 @@ contract Founder {
     }
 
     function verifyFounder(address _ad) external view returns(bool condition){
-        if(isFounder[_ad] == true){
+        if(isFounder[_ad]){
             return true;
         }else{
             return false;
