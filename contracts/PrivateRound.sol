@@ -170,7 +170,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         Founder founder = Founder(_founderSM);
         require(founder.verifyFounder(msg.sender), "The address is not registered in the 'Founder' contract");
         uint unlockedAmount = 0;
-        if(milestoneApprovalStatus[_roundId][_milestoneId] == 1 && milestoneWithdrawalStatus[_roundId][_milestoneId] == false){
+        if(milestoneApprovalStatus[_roundId][_milestoneId] == 1 && !milestoneWithdrawalStatus[_roundId][_milestoneId]){
             unlockedAmount = (totalTokensOfInvestor[_roundId][_investor] * _percentage)/ 100;
             milestoneWithdrawalStatus[_roundId][_milestoneId] = true;
             remainingTokensOfInvestor[_roundId][_investor] -= unlockedAmount;
@@ -294,7 +294,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         }
         for(uint i = 0; i < _milestone[_investor][_roundId].length; i++){   
             uint id = _milestone[_investor][_roundId][i]._num;
-            if(milestoneApprovalStatus[_roundId][id] == 1 && milestoneWithdrawalStatus[_roundId][id] == false){
+            if(milestoneApprovalStatus[_roundId][id] == 1 && !milestoneWithdrawalStatus[_roundId][id]){
                 unlockedTokens += (totalTokensOfInvestor[_roundId][_investor] * _milestone[_investor][_roundId][i]._percent)/ 100;
             } else if(milestoneApprovalStatus[_roundId][id] == 1 && milestoneWithdrawalStatus[_roundId][_milestone[_investor][_roundId][i]._num] == true){
                 uint beforeTax = (totalTokensOfInvestor[_roundId][_investor] * _milestone[_investor][_roundId][i]._percent) / 100;
