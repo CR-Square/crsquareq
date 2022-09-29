@@ -72,7 +72,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     function createPrivateRound(uint _roundId, address _investorSM, uint _initialPercentage, MilestoneSetup[] memory _mile) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         InvestorLogin investor = InvestorLogin(_investorSM);
-        require(investor.verifyInvestor(msg.sender) == true, "The address is not registered in the 'InvestorLogin' contract");
+        require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
         if(roundIdControll[_roundId] == true){
             revert("round Id is already taken");
         }
@@ -94,7 +94,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     function depositTokens(address _tokenContract, address _investorSM, address _founder, uint _tokens, uint _roundId) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         InvestorLogin investor = InvestorLogin(_investorSM);
-        require(investor.verifyInvestor(msg.sender) == true, "The address is not registered in the 'InvestorLogin' contract");
+        require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
         tokenContract = _tokenContract;
         FundLock fl = new FundLock(msg.sender, _roundId, _tokens, address(this));
         seperateContractLink[_roundId][_founder] = address(fl);
@@ -113,7 +113,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     function withdrawInitialPercentage(address _tokenContract, address _founderSM, uint _roundId) external { // 2% tax should be levied on the each transaction
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         Founder founder = Founder(_founderSM);
-        require(founder.verifyFounder(msg.sender) == true, "The address is not registered in the 'Founder' contract");
+        require(founder.verifyFounder(msg.sender), "The address is not registered in the 'Founder' contract");
         if(initialWithdrawalStatus[_roundId][msg.sender] == true){
             revert("Initial withdrawal is already done");
         }
@@ -135,14 +135,14 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     function milestoneValidationRequest(address _founderSM, uint _milestoneId, uint _roundId) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         Founder founder = Founder(_founderSM);
-        require(founder.verifyFounder(msg.sender) == true, "The address is not registered in the 'Founder' contract");
+        require(founder.verifyFounder(msg.sender), "The address is not registered in the 'Founder' contract");
         requestForValidation[_roundId][_milestoneId] = msg.sender;
     }
 
     function validateMilestone(address _investorSM, uint _milestoneId, uint _roundId, bool _status) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         InvestorLogin investor = InvestorLogin(_investorSM);
-        require(investor.verifyInvestor(msg.sender) == true, "The address is not registered in the 'InvestorLogin' contract");
+        require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
         if(milestoneApprovalStatus[_roundId][_milestoneId] == 1){
             revert("The milestone is already approved");
         }
@@ -162,7 +162,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     function withdrawIndividualMilestoneByFounder(address _founderSM, address _investor, uint _roundId, uint _milestoneId, uint _percentage, address _tokenContract) external {
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         Founder founder = Founder(_founderSM);
-        require(founder.verifyFounder(msg.sender) == true, "The address is not registered in the 'Founder' contract");
+        require(founder.verifyFounder(msg.sender), "The address is not registered in the 'Founder' contract");
         uint unlockedAmount = 0;
         if(milestoneApprovalStatus[_roundId][_milestoneId] == 1 && milestoneWithdrawalStatus[_roundId][_milestoneId] == false){
             unlockedAmount = (totalTokensOfInvestor[_roundId][_investor] * _percentage)/ 100;
@@ -184,7 +184,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     function withdrawIndividualMilestoneByInvestor(address _investorSM, uint _roundId, address _founder, uint _milestoneId, uint _percentage, address _tokenContract) external{
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         InvestorLogin investor = InvestorLogin(_investorSM);
-        require(investor.verifyInvestor(msg.sender) == true, "The address is not registered in the 'InvestorLogin' contract");
+        require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
         uint count = 0;
         for(uint i = 0; i < _milestone[msg.sender][_roundId].length; i++){
             if(block.timestamp > _milestone[msg.sender][_roundId][i]._date && requestForValidation[_roundId][_milestone[msg.sender][_roundId][i]._num] != _founder){
@@ -217,7 +217,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     function batchWithdrawByInvestors(address _investorSM, uint _roundId, address _founder, address _tokenContract) external{
         require(msg.sender != address(0), "The address is not valid or the address is 0");
         InvestorLogin investor = InvestorLogin(_investorSM);
-        require(investor.verifyInvestor(msg.sender) == true, "The address is not registered in the 'InvestorLogin' contract");
+        require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
         uint count = 0;
         for(uint i = 0; i < _milestone[msg.sender][_roundId].length; i++){
             if(block.timestamp > _milestone[msg.sender][_roundId][i]._date && requestForValidation[_roundId][_milestone[msg.sender][_roundId][i]._num] != _founder){

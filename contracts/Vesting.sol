@@ -58,7 +58,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         if(_vestingMonths == 0){
             _vestingMonths = 1;
         }
-        if(f.verifyFounder(_f.founder) == true){
+        if(f.verifyFounder(_f.founder)){
             vs[_f.founder].depositsOfFounderTokensToInvestor[_vestId][_investor] = _amount; // 1 deposit
             _founderDeposit = vs[_f.founder].depositsOfFounderTokensToInvestor[_vestId][_investor];
             vs[_f.founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] = _amount;
@@ -103,7 +103,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     function depositFounderLinearTokensToInvestors(forFounder memory _f, bytes32 _symbol, uint _vestId, uint _tgeDate, uint _vestingStartDate, uint _vestingMonths, investors[] memory _investors, uint _vestingMode) external {
         require(msg.sender == _f._founder,"The connected wallet is not founder wallet");
         Founder f = Founder(_f._founSM);   // Instance from the founder smart contract. 
-        require(f.verifyFounder(_f._founder) == true,"The founder is not registered yet");
+        require(f.verifyFounder(_f._founder),"The founder is not registered yet");
         uint totalTokens = 0;
         whitelistedTokens[_symbol] = _f._founderCoinAddress;
         if(_vestingMonths == 0){
