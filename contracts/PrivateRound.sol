@@ -1,30 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-contract Founder {
-    
-    mapping(address => bool) private isFounder;
-    address[] private pushFounders;
-
-    function addFounder(address _ad) external{
-        require(msg.sender == _ad,"Connect same wallet to add founder address");
-        isFounder[_ad] = true;
-        pushFounders.push(_ad);
-    }
-
-    function verifyFounder(address _ad) external view returns(bool condition){
-        if(isFounder[_ad] == true){
-            return true;
-        }else{
-            return false;
-        }
-    }
-
-    function getAllFounderAddress() external view returns(address[] memory){
-        return pushFounders;
-    }    
-}
+import "./Founder.sol";
 
 contract InvestorLogin{
     
@@ -127,7 +104,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         uint tax = _tokens * initialPercentage[_roundId][msg.sender] / 100;
         initialTokensForFounder[_roundId][_founder] += tax;
         remainingTokensOfInvestor[_roundId][msg.sender] -= initialTokensForFounder[_roundId][_founder];
-        ERC20(_tokenContract).transferFrom(msg.sender, seperateContractLink[_roundId][_founder], _tokens);
+        require(ERC20(_tokenContract).transferFrom(msg.sender, seperateContractLink[_roundId][_founder], _tokens) == true, "transaction failed or reverted");
     }
 
     mapping(address => uint) public taxedTokens;
@@ -146,7 +123,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         initialTokensForFounder[_roundId][msg.sender] -= tax;
         withdrawalFee[_roundId] += tax;
         initialWithdrawalStatus[_roundId][msg.sender] = true;
-        ERC20(_tokenContract).transferFrom(address(fl), msg.sender, initialTokensForFounder[_roundId][msg.sender]);
+        require(ERC20(_tokenContract).transferFrom(address(fl), msg.sender, initialTokensForFounder[_roundId][msg.sender]) == true, "transaction failed or reverted");
     }
 
     mapping(uint => mapping(uint => uint)) private rejectedByInvestor;
@@ -198,7 +175,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
             unlockedAmount -= tax;
             withdrawalFee[_roundId] += tax;
             FundLock fl = FundLock(seperateContractLink[_roundId][msg.sender]);
-            ERC20(_tokenContract).transferFrom(address(fl), msg.sender, unlockedAmount);
+            require(ERC20(_tokenContract).transferFrom(address(fl), msg.sender, unlockedAmount) == true, "transaction failed or reverted");
         }else{
             revert("No unlocked tokens to withdraw");
         } 
@@ -230,7 +207,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
                 withdrawalFee[_roundId] += tax;
                 lockedAmount -= tax;
                 investorWithdrawnTokens[msg.sender][_roundId] = lockedAmount;
-                ERC20(_tokenContract).transferFrom(address(fl), msg.sender, lockedAmount); 
+                require(ERC20(_tokenContract).transferFrom(address(fl), msg.sender, lockedAmount) == true, "transaction failed or reverted"); 
             }
         }
     }
@@ -265,7 +242,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
                 withdrawalFee[_roundId] += tax;
                 lockedAmount -= tax;
                 investorWithdrawnTokens[msg.sender][_roundId] = lockedAmount;
-                ERC20(_tokenContract).transferFrom(address(fl), msg.sender, lockedAmount); 
+                require(ERC20(_tokenContract).transferFrom(address(fl), msg.sender, lockedAmount) == true, "transaction failed or reverted"); 
             }
         }
     }
@@ -278,7 +255,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     function withdrawTaxTokens(address _tokenContract) external onlyAdmin { // All the taxed tokens are there in the contract itself. no instance is created
         require(msg.sender != address(0), "Invalid address");
         taxedTokens[_tokenContract] = 0;
-        ERC20(_tokenContract).transfer(msg.sender,  taxedTokens[_tokenContract]);
+        require(ERC20(_tokenContract).transfer(msg.sender, taxedTokens[_tokenContract]) == true, "execution failed or reverted");
     }   
 
     /*
@@ -352,6 +329,6 @@ contract FundLock{
     constructor (address investor, uint roundId, uint amount, address privateRoundContractAd) {
         _contractOwner = msg.sender;
         _amount[roundId][investor] = amount;
-        ERC20(PrivateRound(privateRoundContractAd).tokenContract()).approve(privateRoundContractAd,amount);
+        require(ERC20(PrivateRound(privateRoundContractAd).tokenContract()).approve(privateRoundContractAd,amount) == true, "execution failed or reverted");
     }
 }
