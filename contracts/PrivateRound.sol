@@ -16,7 +16,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     address public contractOwner;
 
     // After deploying the contract, deployer stricly needs to activate this function to set contract owner.
-    function initialize() public initializer {
+    function initialize() external initializer{
       ///@dev as there is no constructor, we need to initialise the OwnableUpgradeable explicitly
        __Ownable_init();
        contractOwner = msg.sender;
