@@ -9,28 +9,28 @@ contract InvestorLogin is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     mapping(address => bool) private isInvestor;
     address[] private pushInvestors;
 
-    function initialize() public initializer {
+    function initialize() external initializer{
       ///@dev as there is no constructor, we need to initialise the OwnableUpgradeable explicitly
        __Ownable_init();
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    function addInvestor(address _ad) public{
+    function addInvestor(address _ad) external{
         require(msg.sender == _ad,"Connect same wallet to add 'Investor address' ");
         isInvestor[_ad] = true;
         pushInvestors.push(_ad);
     }
 
-    function verifyInvestor(address _ad) public view returns(bool condition){
-        if(isInvestor[_ad] == true){
+    function verifyInvestor(address _ad) external view returns(bool condition){
+        if(isInvestor[_ad]){
             return true;
         }else{
             return false;
         }
     }
 
-    function getAllInvestorAddress() public view returns(address[] memory){
+    function getAllInvestorAddress() external view returns(address[] memory){
         return pushInvestors;
     }
 }
