@@ -1,33 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./Founder.sol";
-
-contract InvestorLogin{
-    
-    mapping(address => bool) private isInvestor;
-    address[] private pushInvestors;
-
-    function addInvestor(address _ad) external{
-        require(msg.sender == _ad,"Connect same wallet to add 'Investor address' ");
-        isInvestor[_ad] = true;
-        pushInvestors.push(_ad);
-    }
-
-    function verifyInvestor(address _ad) external view returns(bool condition){
-        if(isInvestor[_ad]){
-            return true;
-        }else{
-            return false;
-        }
-    }
-
-    function getAllInvestorAddress() external view returns(address[] memory){
-        return pushInvestors;
-    }
-}
-
-
+import "./InvestorLogin.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -40,7 +15,8 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     mapping(uint => bool) private roundIdControll;
     address public contractOwner;
 
-    function initialize() private initializer onlyProxy{
+    // After deploying the contract, deployer stricly needs to activate this function to set contract owner.
+    function initialize() public initializer {
       ///@dev as there is no constructor, we need to initialise the OwnableUpgradeable explicitly
        __Ownable_init();
        contractOwner = msg.sender;
@@ -262,10 +238,11 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         contractOwner = _newAdmin;
     }
 
-    function withdrawTaxTokens(address _tokenContract) external onlyAdmin { // All the taxed tokens are there in the contract itself. no instance is created
+    function withdrawTaxTokens(address _tokenContract, uint _roundId, address _founder) external onlyAdmin { // All the taxed tokens are there in the contract itself. no instance is created
         require(msg.sender != address(0), "Invalid address");
+        FundLock fl = FundLock(seperateContractLink[_roundId][_founder]);
+        require(ERC20(_tokenContract).transferFrom(address(fl), msg.sender, taxedTokens[_tokenContract]), "execution failed or reverted");
         taxedTokens[_tokenContract] = 0;
-        require(ERC20(_tokenContract).transfer(msg.sender, taxedTokens[_tokenContract]), "execution failed or reverted");
     }   
 
     /*
