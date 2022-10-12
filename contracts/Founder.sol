@@ -9,7 +9,7 @@ contract Founder is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     mapping(address => bool) private isFounder;
     address[] private pushFounders;
 
-    function initialize() public initializer {
+    function initialize() external initializer{
       ///@dev as there is no constructor, we need to initialise the OwnableUpgradeable explicitly
        __Ownable_init();
     }
