@@ -138,8 +138,8 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         if(block.timestamp >= vs[_founder].tgeDate[_vestId][_investor]){
             vs[_founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] -= vs[_founder].tgeFund[_vestId][_investor];
             investorWithdrawBalance[_vestId][_investor] += vs[_founder].tgeFund[_vestId][_investor];
-            vs[_founder].tgeFund[_vestId][_investor] = 0; 
             require(ERC20(whitelistedTokens[_symbol]).transfer(msg.sender, vs[_founder].tgeFund[_vestId][_investor]), "transaction failed or reverted");
+            vs[_founder].tgeFund[_vestId][_investor] = 0; 
         }else{
             revert("The transaction has failed because the TGE time has not reached yet");
         }
