@@ -5,6 +5,14 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract Founder is Initializable, UUPSUpgradeable, OwnableUpgradeable{
+
+    /*
+        It saves bytecode to revert on custom errors instead of using require
+        statements. We are just declaring these errors for reverting with upon various
+        conditions later in this contract. Thanks, Chiru Labs!
+    */
+    error inputConnectedWalletAddress();
+    error addressAlreadyRegistered();
     
     mapping(address => bool) private isFounder;
     address[] private pushFounders;
@@ -17,7 +25,8 @@ contract Founder is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function addFounder(address _ad) external{
-        require(msg.sender == _ad,"Connect same wallet to add founder address");
+        if(msg.sender != _ad){ revert inputConnectedWalletAddress();}
+        if(isFounder[_ad] == true){ revert addressAlreadyRegistered();}
         isFounder[_ad] = true;
         pushFounders.push(_ad);
     }
