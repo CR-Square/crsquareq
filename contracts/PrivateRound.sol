@@ -27,7 +27,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     bool private contractInitialized;
     bool private defaultedByFounder;
     // This is an incremental roundId setup for the contract.
-    uint private roundIdContract = 0;
+    uint private roundIdContract;
     
     // EVENTS:
     event OwnershipGranted(address);
@@ -100,6 +100,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
        __Ownable_init();
        contractOwner = msg.sender;
        contractInitialized = true;
+       roundIdContract = 0;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -409,12 +410,12 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         * READ FUNCTIONS:
     */
 
-    function GetRoundIdByInvestor(uint256 _array) public view returns(uint256){
-        return getRoundId[msg.sender][_array];
+    function GetRoundIdByInvestor(address _investor, uint256 _array) public view returns(uint256){
+        return getRoundId[_investor][_array];
     }
 
-    function GetRoundIdByFounder(uint256 _array) public view returns(uint256){
-        return getRoundId[msg.sender][_array];
+    function GetRoundIdByFounder(address _founder, uint256 _array) public view returns(uint256){
+        return getRoundId[_founder][_array];
     }
 
     function milestoneStatusChk(uint roundId, uint milestoneId) external view returns(int){
