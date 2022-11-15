@@ -18,6 +18,12 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     error tgeDateNotReached();
     error alreadyWithdrawn();
     error installmentNotUnlocked(); 
+    error vestIdAlreadyLinkedToInvestor();
+    error vestIdNotLinkedToInvestor();
+    error vestIdAlreadyTaken();
+    error enterPossibleData();
+    error installmentAlreadySet();
+    error setInstallmentFirst();
 
     // STATE VARIABLES:
     address public contractOwner;
@@ -25,6 +31,13 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     address[] private tokenContractAddress;
 
     // EVENTS
+    event LinearDepositSingleInvestor(address from, address to, uint amount);
+    event LinearDepositBulk(address from, uint id, string success);
+    event tgeWithdrawn(address to, uint amount);
+    event installmentWithdrawn(address to, uint amount);
+    event batchWithdrawTokens(address to, uint amount);
+    event setNonLinearStatus(address from, address to, uint id);
+    event depositNonLinearTokens(address from, address to, uint amount);
 
     // MODIFIERS:
     modifier onlyAdmin(){
@@ -37,7 +50,6 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         mapping(uint => mapping(address => uint)) depositsOfFounderTokensToInvestor;   // 1 vestingId, address(Investor) = amount (total by founder)
         mapping(uint => mapping(address => uint)) depositsOfFounderCurrentTokensToInvestor;
         mapping(uint => mapping(address => uint)) tgeDate;                          // vestId, investor = date
-        mapping(uint => mapping(address => uint)) tgePercentage;                       // vestingId, investor, storeDate (unix)
         mapping(uint => mapping(address => uint)) vestingStartDate;                 // vestingId, investor, vestingStarDate (unix)
         mapping(uint => mapping(address => uint)) vestingMonths;                    // vestingId, investor, vestingMonths (plain days)
         mapping(uint => mapping(address => uint)) tgeFund;                          // vestId, investor - tge percentage amt
@@ -46,7 +58,7 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     }
 
     struct installment{
-        mapping(uint => uint) _date; // index => date 
+        mapping(uint => uint) _date;
         mapping(uint => bool) _status; 
         mapping(uint => uint) _fund;
     }
@@ -73,6 +85,65 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         uint256 _fundDue;
     }
 
+    struct depositLinear{
+        address _coinContractAd;
+        address _investor;
+        uint _vestId;
+        uint _amount;
+        uint _tgeFund;
+        uint _tgeDate;
+        uint _vestingStartDate;
+        uint _vestingMonths;
+        uint _vestingMode;
+    }
+
+    struct linearBulk{
+        address _coinContractAd;
+        uint _vestId;
+        uint _tgeDate;
+        uint _vestingStartDate;
+        uint _vestingMonths;
+        uint _vestingMode;
+    }
+
+    struct withdrawTGE{
+        address _coinContractAd;
+        address _founder;
+        address _investor;
+        uint _vestId;
+    }
+
+    struct withdrawInstallmentTokens{
+        address _coinContractAd;
+         address _founder; 
+        address _investor;
+        uint _vestId;
+        uint _index;
+    }
+
+    struct setNonLinear{
+        address _founder;
+        address _investor;
+        uint _vestId;
+    }
+
+    struct withdrawBatchTokens{
+        address _coinContractAd;
+        address _founder;
+        address _investor; 
+        uint _vestId;
+    }
+
+    struct depositNonLinear{
+        address _coinContractAd;
+        address _founder; 
+        address _investor;
+        uint _vestId;
+        uint _amount;
+        uint _tgeDate;
+        uint _tgeFund;
+    }
+
     // MAPPINGS
     mapping(address => bool) private addressExist;
     mapping(address => vestingSchedule) vs;       // vestid -> investor -> installments[date: , fund]
@@ -81,6 +152,9 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     mapping(uint => mapping(address => uint)) private investorWithdrawBalance;
     mapping(address => mapping(uint => bool)) private isVestIdForFounder;
     mapping(uint256 => bool) private vestIdExist;
+    mapping(address => mapping(uint => bool)) private isVestIdForInvestor;
+    mapping(uint => bool) private vestIdAlreadyLinked;
+    mapping(uint => mapping(address => bool)) private installmentSet;
 
     /**
         * initialize().
@@ -105,9 +179,9 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     }
 
     /**
-        * whitelistToken.  eg: FTK
+        * whitelistToken.  eg: FTK,DAI,USDC
         * Whitelist the token address, so that only tokensfrom the whitelist works.
-        * @param _tokenContract Enter the token contract address to be logged to the smart contract.
+        * @param _tokenContract Set the token contract address to be logged to the smart contract.
     */
     function whitelistToken(address _tokenContract) external onlyAdmin{
         if(_tokenContract == address(0)){ revert zeroAddress();}
@@ -116,111 +190,127 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         tokenContractAddress.push(_tokenContract);
     }
 
-    // Method: LINEAR:
     /**
-        * depositFounderLinearTokens
-        * @param _tgeFund 1
-        * @param _coinContractAd 2
-        * @param _vestId 3
-        * @param _amount 4
-        * @param _investor 5
-        * @param _tgeDate 6 
-        * @param _vestingStartDate 7 
-        * @param _vestingMonths 8 
-        * @param _vestingMode 9
+        * LINEAR DEPOSIT - depositFounderLinearTokens
+        * The expected input type is struct.
+        * _coinContractAd - Set the token contract address
+        * _investor - Set the investor address.
+        * _vestId - Set the vestId.
+        * _amount - Set the amount of token.
+        * _tgeFund - Set the tge fund
+        * _tgeDate - Set the tgeDate.
+        * _vestingStartDate - Set the vesting start date.
+        * _vestingMonths - Set the vesting months.
+        * _vestingMode - Set the vesting mode.
+        * @param _input - Use struct format.
     */
-    function depositFounderLinearTokens(uint _tgeFund, address _coinContractAd, uint _vestId, uint _amount, address _investor, uint _tgeDate, uint _vestingStartDate, uint _vestingMonths, uint _vestingMode) external {
-        if(addressExist[_coinContractAd] != true){ revert tokenNotSupported();}
+    function depositFounderLinearTokens(depositLinear memory _input) external {
+        depositLinear memory data = _input;
+        if(addressExist[data._coinContractAd] != true){ revert tokenNotSupported();}
+        if(data._tgeFund <=0 || data._amount <= 0 || data._tgeDate < block.timestamp || data._vestingStartDate < block.timestamp || data._vestingMonths <=0 || data._vestingMode <=0){ revert enterPossibleData();}
         Founder founder = Founder(FounderContract);
-        if(isVestIdForFounder[msg.sender][_vestId] == true){ revert vestIdAlreadyLinkedToFounder();}
-        isVestIdForFounder[msg.sender][_vestId] = true;
+        if( vestIdAlreadyLinked[data._vestId] == true){ revert vestIdAlreadyTaken();}
+        vestIdAlreadyLinked[data._vestId] = true;
+        if(isVestIdForFounder[msg.sender][data._vestId] == true){ revert vestIdAlreadyLinkedToFounder();}
+        isVestIdForFounder[msg.sender][data._vestId] = true;
+        isVestIdForInvestor[data._investor][data._vestId] = true;
         uint _founderDeposit;
-        if(_vestingMonths == 0){
-            _vestingMonths = 1;
+        if(data._vestingMonths == 0){
+            data._vestingMonths = 1;
         }
         if(founder.verifyFounder(msg.sender)){
-            vs[msg.sender].depositsOfFounderTokensToInvestor[_vestId][_investor] = _amount; // 1 deposit
-            _founderDeposit = vs[msg.sender].depositsOfFounderTokensToInvestor[_vestId][_investor];
-            vs[msg.sender].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] = _amount;
-            vs[msg.sender].tgeDate[_vestId][_investor] = _tgeDate; // 3 unix
-            vs[msg.sender].vestingStartDate[_vestId][_investor] = _vestingStartDate; // 4 unix
-            vs[msg.sender].vestingMonths[_vestId][_investor] = _vestingMonths; // 5 plain
-            vs[msg.sender].tgeFund[_vestId][_investor] = _tgeFund;
-            vs[msg.sender].remainingFundForInstallments[_vestId][_investor] = _amount - vs[msg.sender].tgeFund[_vestId][_investor];
-            vs[msg.sender].installmentAmount[_vestId][_investor] = vs[msg.sender].remainingFundForInstallments[_vestId][_investor] / _vestingMonths;
-            for(uint i = 0; i < _vestingMonths; i++){
-                vestingDues[_vestId][_investor]._date[i+1] = _vestingStartDate + (i * _vestingMode * 1 days);
-                vestingDues[_vestId][_investor]._status[i+1] = false;
-                vestingDues[_vestId][_investor]._fund[i+1] =  vs[msg.sender].installmentAmount[_vestId][_investor];
+            vs[msg.sender].depositsOfFounderTokensToInvestor[data._vestId][data._investor] = data._amount; // 1 deposit
+            _founderDeposit = vs[msg.sender].depositsOfFounderTokensToInvestor[data._vestId][data._investor];
+            vs[msg.sender].depositsOfFounderCurrentTokensToInvestor[data._vestId][data._investor] = data._amount;
+            vs[msg.sender].tgeDate[data._vestId][data._investor] = data._tgeDate; // 3 unix
+            vs[msg.sender].vestingStartDate[data._vestId][data._investor] = data._vestingStartDate; // 4 unix
+            vs[msg.sender].vestingMonths[data._vestId][data._investor] = data._vestingMonths; // 5 plain
+            vs[msg.sender].tgeFund[data._vestId][data._investor] = data._tgeFund;
+            vs[msg.sender].remainingFundForInstallments[data._vestId][data._investor] = data._amount - vs[msg.sender].tgeFund[data._vestId][data._investor];
+            vs[msg.sender].installmentAmount[data._vestId][data._investor] = vs[msg.sender].remainingFundForInstallments[data._vestId][data._investor] / data._vestingMonths;
+            for(uint i = 0; i < data._vestingMonths; i++){
+                vestingDues[data._vestId][data._investor]._date[i+1] = data._vestingStartDate + (i * data._vestingMode * 1 days);
+                vestingDues[data._vestId][data._investor]._status[i+1] = false;
+                vestingDues[data._vestId][data._investor]._fund[i+1] =  vs[msg.sender].installmentAmount[data._vestId][data._investor];
             }
-            installmentCount[_vestId][_investor] = _vestingMonths;
-            require(ERC20(_coinContractAd).transferFrom(msg.sender, address(this), _amount), "transaction failed or reverted");
+            installmentCount[data._vestId][data._investor] = data._vestingMonths;
+            require(ERC20(data._coinContractAd).transferFrom(msg.sender, address(this), data._amount), "transaction failed or reverted");
+            emit LinearDepositSingleInvestor(msg.sender,data._investor,data._amount);
         }else{
             revert founderNotRegistered();
         }
     }
 
-    
-
     /**
-        * depositFounderLinearTokensToInvestors
-        * use the mapping to get the data of investor based on vestid and index number subject to the struct array
-        * getting struct value in array and using investors array so using double array in the smart contract
-        * @param _coinContractAd 1
-        * @param _vestId 2
-        * @param _tgeDate 3
-        * @param _vestingStartDate 4
-        * @param _vestingMonths 5
-        * @param _investors 6
-        * @param _vestingMode 7 
+        * LINEAR DEPOSIT - depositFounderLinearTokensToInvestors
+        * use the mapping to get the inputs of investor based on vestid and index number subject to the struct array.
+        * getting struct value in array and using investors array so using double array in the smart contract.
+        * _coinContractAd - Set the token contract address.
+        * _vestId - Set the vestId.
+        * _tgeDate - Set the tgeDate.
+        * _vestingStartDate - Set the vesting start date.
+        * _vestingMonths - Set the vesting months.
+        * _vestingMode - Set the vesting mode. 
+        * @param _input - Use struct format.
+        * @param _investors Set array of investor address and fund allocated for them.
     */
-    function depositFounderLinearTokensToInvestors(address _coinContractAd, uint _vestId, uint _tgeDate, uint _vestingStartDate, uint _vestingMonths, investors[] memory _investors, uint _vestingMode) external {
-        if(addressExist[_coinContractAd] != true){ revert tokenNotSupported();}
+    function depositFounderLinearTokensToInvestors(linearBulk memory _input, investors[] memory _investors) external {
+        linearBulk memory data = _input;
+        if(addressExist[data._coinContractAd] != true){ revert tokenNotSupported();}
+        if(data._tgeDate < block.timestamp || data._vestingStartDate < block.timestamp || data._vestingMonths <=0 || data._vestingMode <=0){ revert enterPossibleData();}
         Founder founder = Founder(FounderContract);
         require(founder.verifyFounder(msg.sender), "The address is not registered in the 'Founder' contract");
-        if(isVestIdForFounder[msg.sender][_vestId] == true){ revert vestIdAlreadyLinkedToFounder();}
-        isVestIdForFounder[msg.sender][_vestId] = true;
+        if( vestIdAlreadyLinked[data._vestId] == true){ revert vestIdAlreadyTaken();}
+        vestIdAlreadyLinked[data._vestId] = true;
+        if(isVestIdForFounder[msg.sender][data._vestId] == true){ revert vestIdAlreadyLinkedToFounder();}
+        isVestIdForFounder[msg.sender][data._vestId] = true;
         uint totalTokens = 0;
-        if(_vestingMonths == 0){
-            _vestingMonths = 1;
+        if(data._vestingMonths == 0){
+            data._vestingMonths = 1;
         }
         for(uint i = 0; i < _investors.length; i++){
+            isVestIdForInvestor[_investors[i]._investor][data._vestId] = true;
             address _investor = _investors[i]._investor;
             uint _amount = (_investors[i]._tokens * (10**18))/10000;
             totalTokens += _amount;
-            vs[msg.sender].depositsOfFounderTokensToInvestor[_vestId][_investor] = _amount; // 1 deposit
-            vs[msg.sender].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] = _amount;
-            vs[msg.sender].tgeDate[_vestId][_investor] = _tgeDate; // 3 unix
-            vs[msg.sender].vestingStartDate[_vestId][_investor] = _vestingStartDate; // 4 unix
-            vs[msg.sender].vestingMonths[_vestId][_investor] = _vestingMonths; // 5 plain
-            vs[msg.sender].tgeFund[_vestId][_investor] = (_investors[i]._tgeFund * (10**18))/10000;
-            vs[msg.sender].remainingFundForInstallments[_vestId][_investor] = _amount - vs[msg.sender].tgeFund[_vestId][_investor];
-            vs[msg.sender].installmentAmount[_vestId][_investor] = vs[msg.sender].remainingFundForInstallments[_vestId][_investor] / _vestingMonths;
-            require(ERC20(_coinContractAd).transferFrom(msg.sender, _investors[i]._investor, (_investors[i]._tokens * (10**18))/10000), "transaction failed or reverted");
-            for(uint j = 0; j < _vestingMonths; j++){
-                vestingDues[_vestId][_investor]._date[j+1] = _vestingStartDate + (j * _vestingMode * 1 days);
-                vestingDues[_vestId][_investor]._status[j+1] = false;
-                vestingDues[_vestId][_investor]._fund[j+1] =  vs[msg.sender].installmentAmount[_vestId][_investor];
+            vs[msg.sender].depositsOfFounderTokensToInvestor[data._vestId][_investor] = _amount; // 1 deposit
+            vs[msg.sender].depositsOfFounderCurrentTokensToInvestor[data._vestId][_investor] = _amount;
+            vs[msg.sender].tgeDate[data._vestId][_investor] = data._tgeDate; // 3 unix
+            vs[msg.sender].vestingStartDate[data._vestId][_investor] = data._vestingStartDate; // 4 unix
+            vs[msg.sender].vestingMonths[data._vestId][_investor] = data._vestingMonths; // 5 plain
+            vs[msg.sender].tgeFund[data._vestId][_investor] = (_investors[i]._tgeFund * (10**18))/10000;
+            vs[msg.sender].remainingFundForInstallments[data._vestId][_investor] = _amount - vs[msg.sender].tgeFund[data._vestId][_investor];
+            vs[msg.sender].installmentAmount[data._vestId][_investor] = vs[msg.sender].remainingFundForInstallments[data._vestId][_investor] / data._vestingMonths;
+            require(ERC20(data._coinContractAd).transferFrom(msg.sender, _investors[i]._investor, (_investors[i]._tokens * (10**18))/10000), "transaction failed or reverted");
+            for(uint j = 0; j < data._vestingMonths; j++){
+                vestingDues[data._vestId][_investor]._date[j+1] = data._vestingStartDate + (j * data._vestingMode * 1 days);
+                vestingDues[data._vestId][_investor]._status[j+1] = false;
+                vestingDues[data._vestId][_investor]._fund[j+1] =  vs[msg.sender].installmentAmount[data._vestId][_investor];
             }
-            installmentCount[_vestId][_investor] = _vestingMonths;
+            installmentCount[data._vestId][_investor] = data._vestingMonths;
+            emit LinearDepositBulk(msg.sender, data._vestId, "deposit Completed");
         }
     }
 
     /**
         * withdrawTGEFund
-        * @param _investor 1
-        * @param _founder 2
-        * @param _vestId 3
-        * @param _coinContractAd 4
+        * _coinContractAd - Set the token contract address.
+        * _founder - Set the founder address.
+        * _investor - Set the investor address.
+        * _vestId - Set the vestId.
+        * @param _input - Use struct format.
     */
-    function withdrawTGEFund(address _investor,address _founder, uint _vestId, address _coinContractAd) external {
-        if(addressExist[_coinContractAd] != true){ revert tokenNotSupported();}
-        if(msg.sender != _investor){ revert addressNotMatched();}
-        if(block.timestamp >= vs[_founder].tgeDate[_vestId][_investor]){
-            vs[_founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] -= vs[_founder].tgeFund[_vestId][_investor];
-            investorWithdrawBalance[_vestId][_investor] += vs[_founder].tgeFund[_vestId][_investor];
-            require(ERC20(_coinContractAd).transfer(msg.sender, vs[_founder].tgeFund[_vestId][_investor]), "transaction failed or reverted");
-            vs[_founder].tgeFund[_vestId][_investor] = 0; 
+    function withdrawTGEFund(withdrawTGE memory _input) external {
+        withdrawTGE memory data = _input;
+        if(addressExist[data._coinContractAd] != true){ revert tokenNotSupported();}
+        if(msg.sender != data._investor){ revert addressNotMatched();}
+        if(isVestIdForInvestor[data._investor][data._vestId] != true){ revert vestIdNotLinkedToInvestor();}
+        if(block.timestamp >= vs[data._founder].tgeDate[data._vestId][data._investor]){
+            vs[data._founder].depositsOfFounderCurrentTokensToInvestor[data._vestId][data._investor] -= vs[data._founder].tgeFund[data._vestId][data._investor];
+            investorWithdrawBalance[data._vestId][data._investor] += vs[data._founder].tgeFund[data._vestId][data._investor];
+            require(ERC20(data._coinContractAd).transfer(msg.sender, vs[data._founder].tgeFund[data._vestId][data._investor]), "transaction failed or reverted");
+            emit tgeWithdrawn(msg.sender, vs[data._founder].tgeFund[data._vestId][data._investor]);
+            vs[data._founder].tgeFund[data._vestId][data._investor] = 0; 
         }else{
             revert tgeDateNotReached();
         }
@@ -229,24 +319,28 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     /**
         * withdrawInstallmentAmount
         * Based on months the installment amount is calculated, once the withdrawn is done deduct.
-        * @param _investor 1
-        * @param _founder 2
-        * @param _vestId 3
-        * @param _index 4
-        * @param _coinContractAd 5
+        * _coinContractAd - Set the token contract address.
+        * _founder - Set the founder address.
+        * _investor - Set the investor address.
+        * _vestId - Set the vestId.
+        * _index - Set the index number.
+        * @param _input - Use struct format.
     */
-    function withdrawInstallmentAmount(address _investor,address _founder, uint _vestId, uint _index, address _coinContractAd) external {
-        if(addressExist[_coinContractAd] != true){ revert tokenNotSupported();}
-        if(msg.sender != _investor){ revert addressNotMatched();}
+    function withdrawInstallmentAmount(withdrawInstallmentTokens memory _input) external {
+        withdrawInstallmentTokens memory data = _input;
+        if(addressExist[data._coinContractAd] != true){ revert tokenNotSupported();}
+        if(msg.sender != data._investor){ revert addressNotMatched();}
+        if(isVestIdForInvestor[data._investor][data._vestId] != true){ revert vestIdNotLinkedToInvestor();}
         uint amt;
-        if(block.timestamp >= vestingDues[_vestId][_investor]._date[_index]){
-            if(!vestingDues[_vestId][_investor]._status[_index]){
-                amt = vestingDues[_vestId][_investor]._fund[_index];
-                vs[_founder].remainingFundForInstallments[_vestId][_investor] -= amt;
-                vs[_founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] -= amt;
-                investorWithdrawBalance[_vestId][_investor] += amt;
-                vestingDues[_vestId][_investor]._status[_index] = true;
-                require(ERC20(_coinContractAd).transfer(_investor, amt), "transaction failed or executed");   // update this line
+        if(block.timestamp >= vestingDues[data._vestId][data._investor]._date[data._index]){
+            if(!vestingDues[data._vestId][data._investor]._status[data._index]){
+                amt = vestingDues[data._vestId][data._investor]._fund[data._index];
+                vs[data._founder].remainingFundForInstallments[data._vestId][data._investor] -= amt;
+                vs[data._founder].depositsOfFounderCurrentTokensToInvestor[data._vestId][data._investor] -= amt;
+                investorWithdrawBalance[data._vestId][data._investor] += amt;
+                vestingDues[data._vestId][data._investor]._status[data._index] = true;
+                require(ERC20(data._coinContractAd).transfer(data._investor, amt), "transaction failed or executed");   // update this line
+                emit installmentWithdrawn(data._investor, amt);
             }else{
                 revert alreadyWithdrawn();
             }
@@ -257,29 +351,33 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
 
     /**
         * withdrawBatch 
-        * @param _founder 1
-        * @param _investor 2 
-        * @param _vestId 3
-        * @param _coinContractAd 4
+        * _coinContractAd - Set the token contract address
+        * _founder - Set the founder address.
+        * _investor - Set the investor address.
+        * _vestId - Set the vestId.
+        * @param _input - Use struct format.
     */
-    function withdrawBatch(address _founder, address _investor, uint _vestId, address _coinContractAd) external {
-        if(msg.sender != _investor){ revert addressNotMatched();}
-        if(installmentCount[_vestId][_investor] != 0){
+    function withdrawBatch(withdrawBatchTokens memory _input) external {
+        withdrawBatchTokens memory data = _input;
+        if(msg.sender != data._investor){ revert addressNotMatched();}
+        if(isVestIdForInvestor[data._investor][data._vestId] != true){ revert vestIdNotLinkedToInvestor();}
+        if(installmentCount[data._vestId][data._investor] != 0){
             uint unlockedAmount = 0;
-            for(uint i = 1; i <= installmentCount[_vestId][_investor]; i++){
-                if(vestingDues[_vestId][_investor]._date[i] <= block.timestamp && !vestingDues[_vestId][_investor]._status[i]){
-                    unlockedAmount += vestingDues[_vestId][_investor]._fund[i];
-                    vestingDues[_vestId][_investor]._status[i] = true;
+            for(uint i = 1; i <= installmentCount[data._vestId][data._investor]; i++){
+                if(vestingDues[data._vestId][data._investor]._date[i] <= block.timestamp && !vestingDues[data._vestId][data._investor]._status[i]){
+                    unlockedAmount += vestingDues[data._vestId][data._investor]._fund[i];
+                    vestingDues[data._vestId][data._investor]._status[i] = true;
                 }
             }
-            vs[_founder].remainingFundForInstallments[_vestId][_investor] -= unlockedAmount;
-            if(block.timestamp >= vs[_founder].tgeDate[_vestId][_investor]){
-                unlockedAmount += vs[_founder].tgeFund[_vestId][_investor];
-                vs[_founder].tgeFund[_vestId][_investor] = 0; 
+            vs[data._founder].remainingFundForInstallments[data._vestId][data._investor] -= unlockedAmount;
+            if(block.timestamp >= vs[data._founder].tgeDate[data._vestId][data._investor]){
+                unlockedAmount += vs[data._founder].tgeFund[data._vestId][data._investor];
+                vs[data._founder].tgeFund[data._vestId][data._investor] = 0; 
             }
-            vs[_founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] -= unlockedAmount;
-            investorWithdrawBalance[_vestId][_investor] += unlockedAmount;
-            require(ERC20(_coinContractAd).transfer(msg.sender, unlockedAmount), "transaction failed or executed");
+            vs[data._founder].depositsOfFounderCurrentTokensToInvestor[data._vestId][data._investor] -= unlockedAmount;
+            investorWithdrawBalance[data._vestId][data._investor] += unlockedAmount;
+            require(ERC20(data._coinContractAd).transfer(msg.sender, unlockedAmount), "transaction failed or executed");
+            emit batchWithdrawTokens(msg.sender, unlockedAmount);
         }
     }
 
@@ -288,52 +386,65 @@ contract Vesting is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     /**
         * setNonLinearInstallments
         * create an seperate array for date and fund [][]
-        * @param _founder 1
-        * @param _vestId 2
-        * @param _investor 3
-        * @param _dues 4
-    */                                                                                             
-    function setNonLinearInstallments(address _founder, uint _vestId, address _investor,due[] memory _dues) external {
-        if(msg.sender != _founder){ revert addressNotMatched();}
+        * _founder - Set the founder address.
+        * _investor - Set the investor address.
+        * _vestId - Set the vestId.
+        * @param _input - Use struct format.
+        * @param _dues - Set the due setup.
+    */            
+    function setNonLinearInstallments(setNonLinear memory _input, due[] memory _dues) external {
+        setNonLinear memory data = _input;
+        if(msg.sender != data._founder){ revert addressNotMatched();}
         Founder founder = Founder(FounderContract);
-        if(founder.verifyFounder(_founder)){
+        if(installmentSet[data._vestId][data._investor] == true){ revert installmentAlreadySet();}
+        installmentSet[data._vestId][data._investor] = true;
+        if(founder.verifyFounder(data._founder)){
             uint duesAmount;
             for(uint i = 0; i < _dues.length; i++){     // error with for loop status: resolved.
-                vestingDues[_vestId][_investor]._date[i+1] = _dues[i]._dateDue;  //_dues[i]._dateDue;
-                vestingDues[_vestId][_investor]._status[i+1] = false;
-                vestingDues[_vestId][_investor]._fund[i+1] = (_dues[i]._fundDue * (10**18))/10000;  // added the 10 ** 18 condition here.
-                duesAmount += vestingDues[_vestId][_investor]._fund[i+1];
+                vestingDues[data._vestId][data._investor]._date[i+1] = _dues[i]._dateDue;  //_dues[i]._dateDue;
+                vestingDues[data._vestId][data._investor]._status[i+1] = false;
+                vestingDues[data._vestId][data._investor]._fund[i+1] = (_dues[i]._fundDue * (10**18))/10000;  // added the 10 ** 18 condition here.
+                duesAmount += vestingDues[data._vestId][data._investor]._fund[i+1];
             }
-            installmentCount[_vestId][_investor] = _dues.length;
+            installmentCount[data._vestId][data._investor] = _dues.length;
+            emit setNonLinearStatus(data._founder,data._investor,data._vestId);
         }else{
             revert founderNotRegistered();
         }
     }
 
     /**
-        * depositFounderNonLinearTokens
-        * @param _founder 1
-        * @param _coinContractAd 2
-        * @param _vestId 3
-        * @param _amount 4
-        * @param _investor 5
-        * @param _tgeDate 6
-        * @param _tgeFund 7
+        * NON-LINEAR DEPOSIT - depositFounderNonLinearTokens
+        * _coinContractAd - Set the token contract address
+        * _founder - Set the founder address.
+        * _investor - Set the investor address.
+        * _vestId - Set the vestId.
+        * _amount - Set the amount of token.
+        * _tgeDate - Set the tgeDate.
+        * _tgeFund - Set the tge fund.
+        * @param _input - Use struct format.
     */
-    function depositFounderNonLinearTokens(address _founder, address _coinContractAd, uint _vestId, uint _amount, address _investor, uint _tgeDate, uint _tgeFund) external{
-        if(msg.sender != _founder){ revert addressNotMatched();}
+    function depositFounderNonLinearTokens(depositNonLinear memory _input) external{
+        depositNonLinear memory data = _input;
+        if(msg.sender != data._founder){ revert addressNotMatched();}
+        if(data._amount <= 0 || data._tgeDate < block.timestamp || data._tgeFund <=0){ revert enterPossibleData();}
         Founder founder = Founder(FounderContract);
-        if(isVestIdForFounder[msg.sender][_vestId] == true){ revert vestIdAlreadyLinkedToFounder();}
-        isVestIdForFounder[msg.sender][_vestId] = true;
+        if( vestIdAlreadyLinked[data._vestId] == true){ revert vestIdAlreadyTaken();}
+        vestIdAlreadyLinked[data._vestId] = true;
+        if(isVestIdForFounder[msg.sender][data._vestId] == true){ revert vestIdAlreadyLinkedToFounder();}
+        isVestIdForFounder[msg.sender][data._vestId] = true;
+        isVestIdForInvestor[data._investor][data._vestId] = true;
+        if(installmentSet[data._vestId][data._investor] != true){ revert setInstallmentFirst();}
         uint _founderDeposit;
-        if(founder.verifyFounder(_founder)){
-            vs[_founder].depositsOfFounderTokensToInvestor[_vestId][_investor] = _amount; // 1 deposit
-            _founderDeposit = vs[_founder].depositsOfFounderTokensToInvestor[_vestId][_investor];
-            vs[_founder].depositsOfFounderCurrentTokensToInvestor[_vestId][_investor] = _amount;
-            vs[_founder].tgeDate[_vestId][_investor] = _tgeDate; // 3 unix
-            vs[_founder].tgeFund[_vestId][_investor] = _tgeFund;
-            vs[_founder].remainingFundForInstallments[_vestId][_investor] = _amount - vs[_founder].tgeFund[_vestId][_investor];
-            require(ERC20(_coinContractAd).transferFrom(_founder, address(this), _amount), "transaction failed or reverted");
+        if(founder.verifyFounder(data._founder)){
+            vs[data._founder].depositsOfFounderTokensToInvestor[data._vestId][data._investor] = data._amount; // 1 deposit
+            _founderDeposit = vs[data._founder].depositsOfFounderTokensToInvestor[data._vestId][data._investor];
+            vs[data._founder].depositsOfFounderCurrentTokensToInvestor[data._vestId][data._investor] = data._amount;
+            vs[data._founder].tgeDate[data._vestId][data._investor] = data._tgeDate; // 3 unix
+            vs[data._founder].tgeFund[data._vestId][data._investor] = data._tgeFund;
+            vs[data._founder].remainingFundForInstallments[data._vestId][data._investor] = data._amount - vs[data._founder].tgeFund[data._vestId][data._investor];
+            require(ERC20(data._coinContractAd).transferFrom(data._founder, address(this), data._amount), "transaction failed or reverted");
+            emit depositNonLinearTokens(data._founder, address(this), data._amount);
         }else{
             revert founderNotRegistered();
         }
