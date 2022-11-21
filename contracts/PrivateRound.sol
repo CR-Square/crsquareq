@@ -129,7 +129,6 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         * @param _initialPercentage Enter the initial percantange of amount needs to be unlocked after deposit.
         * @param _mile Set the number of milestone for the founder.
     */
-
     function createPrivateRound(address _founder, uint _initialPercentage, MilestoneSetup[] memory _mile) external isInitialized{
         InvestorLogin investor = InvestorLogin(InvestorLoginContract);
         require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
@@ -165,7 +164,6 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         * @param _tokens Enter how many tokens needs to be deposited for the founder.
         * @param _roundId Enter the roundId generated while creating the privateRound.
     */
- 
     function depositTokens(address _tokenContract, address _founder, uint _tokens, uint _roundId) external isInitialized{
         require(_tokenContract != address(0), "The smart contract address is invalid");
         InvestorLogin investor = InvestorLogin(InvestorLoginContract);
@@ -191,7 +189,6 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         * @param _tokenContract Enter the token contract address.
         * @param _roundId Enter the roundId generated while creating the privateRound.
     */
-    
     function withdrawInitialPercentage(address _tokenContract, uint _roundId) external isInitialized{ // 2% tax should be levied on the each transaction
         if(addressExist[_tokenContract] != true){ revert tokenNotSupported();}
         Founder founder = Founder(FounderContract);
@@ -215,7 +212,6 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         * @param _milestoneId Enter the milestoneID, for validation set during the privateRound creation.
         * @param _roundId Enter the roundId generated while creating the privateRound.
     */
-
     function milestoneValidationRequest(uint _milestoneId, uint _roundId) external isInitialized{
         Founder founder = Founder(FounderContract);
         require(founder.verifyFounder(msg.sender), "The address is not registered in the 'Founder' contract");
@@ -229,7 +225,6 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         * @param _roundId Enter the roundId generated while creating the privateRound.
         * @param _status Enter "true" for approved, or "false" for rejected.
     */
-
     function validateMilestone(uint _milestoneId, uint _roundId, bool _status) external isInitialized{
         InvestorLogin investor = InvestorLogin(InvestorLoginContract);
         require(investor.verifyInvestor(msg.sender), "The address is not registered in the 'InvestorLogin' contract");
@@ -257,8 +252,6 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         * @param _percentage Enter the percentage set during the privateRound creation.
         * @param _tokenContract Enter the token contract address.
     */
-    
-
     function withdrawIndividualMilestoneByFounder(address _investor, uint _roundId, uint _milestoneId, uint _percentage, address _tokenContract) external isInitialized{
         if(addressExist[_tokenContract] != true){ revert tokenNotSupported();}
         Founder founder = Founder(FounderContract);
@@ -291,7 +284,6 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         * @param _percentage Enter the percentage set during the privateRound creation.
         * @param _tokenContract Enter the token contract address.
     */
-
     function withdrawIndividualMilestoneByInvestor(uint _roundId, address _founder, uint _milestoneId, uint _percentage, address _tokenContract) external isInitialized{
         if(addressExist[_tokenContract] != true){ revert tokenNotSupported();}
         InvestorLogin investor = InvestorLogin(InvestorLoginContract);
@@ -328,7 +320,6 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         * @param _founder Enter the founder address.
         * @param _tokenContract Enter the token contract address.
     */
-
     function batchWithdrawByInvestors(uint _roundId, address _founder, address _tokenContract) external isInitialized{
         if(addressExist[_tokenContract] != true){ revert tokenNotSupported();}
         InvestorLogin investor = InvestorLogin(InvestorLoginContract);
@@ -340,9 +331,6 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
                 count += 1;
             }
         }
-        // if(projectCancel[_roundId] || count >= 2){
-        //     defaultedByFounder = true;
-        // }
         uint lockedAmount = 0;
         if(projectCancel[_roundId] || count >= 2){
             for(uint i = 0; i < _milestone[msg.sender][_roundId].length; i++){
@@ -369,7 +357,6 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         * Two factor ownership granting process.
         * @param newOwner , sets netOwner as admin for the contract, buts ownership needs to be claimed.
     */
-    
     function grantOwnership(address newOwner) public virtual onlyAdmin {
         emit OwnershipGranted(newOwner);
         _grantedOwner = newOwner;
@@ -379,7 +366,6 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         * claimOwnership.
         * Two factor ownership granting process.
     */
-
     function claimOwnership() public virtual {
         require(_grantedOwner == _msgSender(), "Ownable: caller is not the granted owner");
         emit OwnershipTransferred(contractOwner, _grantedOwner);
@@ -393,7 +379,6 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         * @param _roundId Enter the roundId generated while creating the privateRound.
         * @param _founder Enter the founder address.
     */
-
     function withdrawTaxTokens(address _tokenContract, uint _roundId, address _founder) external onlyAdmin { // All the taxed tokens are there in the contract itself. no instance is created
         if(addressExist[_tokenContract] != true){ revert tokenNotSupported();}
         FundLock fl = FundLock(seperateContractLink[_roundId][_founder]);
