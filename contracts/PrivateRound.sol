@@ -21,17 +21,17 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
     // This state varibale holds the contract address necessary for the privateRound.
     address private InvestorLoginContract;
     address private FounderContract;
-    address public tokenContract;
+    // address public tokenContract;
+    mapping(uint => address) public tokenContract;
     address private _grantedOwner;
     // holds the suitable tokens to be used for this contract. 
     bool private contractInitialized;
-    bool private defaultedByFounder;
     // This is an incremental roundId setup for the contract.
     uint private roundIdContract;
     
     // EVENTS:
     event OwnershipGranted(address);
-    event roundCreated(address indexed from, address indexed to);
+    event roundCreated(address indexed from, address indexed to, uint indexed roundId);
     event deposited(address indexed from, address indexed to, uint256 indexed amount);
     event initialPercentageWithdrawn(address indexed to, uint256 indexed amount);
     event milestoneValidation(uint indexed milestone, uint indexed round, bool indexed status);
@@ -143,7 +143,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         initialPercentage[roundIdContract][msg.sender] = _initialPercentage;
         getRoundId[msg.sender].push(roundIdContract);
         getRoundId[_founder].push(roundIdContract);
-        emit roundCreated(msg.sender,_founder);
+        emit roundCreated(msg.sender, _founder, roundIdContract);
     }
 
     /**
@@ -173,7 +173,7 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
         if(isRoundIdForInvestor[msg.sender][_roundId] != true){ revert roundIdNotLinkedToInvestor();}
         if(addressExist[_tokenContract] != true){ revert tokenNotSupported();}
         isRoundIdForFounder[_founder][_roundId] = true;
-        tokenContract = _tokenContract;
+        tokenContract[_roundId] = _tokenContract;
         FundLock fl = new FundLock(msg.sender, _roundId, _tokens, address(this));
         seperateContractLink[_roundId][_founder] = address(fl);
         contractAddress[_roundId] = address(fl);
@@ -304,9 +304,6 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
             }
         }
         if(projectCancel[_roundId] || count >= 2){
-            defaultedByFounder = true;
-        }
-        if(defaultedByFounder){
             uint lockedAmount = 0;
             if(milestoneApprovalStatus[_roundId][_milestoneId] != 1){
                 lockedAmount += (totalTokensOfInvestor[_roundId][msg.sender] * _percentage) / 100;
@@ -343,11 +340,11 @@ contract PrivateRound is Initializable, UUPSUpgradeable, OwnableUpgradeable{
                 count += 1;
             }
         }
-        if(projectCancel[_roundId] || count >= 2){
-            defaultedByFounder = true;
-        }
+        // if(projectCancel[_roundId] || count >= 2){
+        //     defaultedByFounder = true;
+        // }
         uint lockedAmount = 0;
-        if(defaultedByFounder){
+        if(projectCancel[_roundId] || count >= 2){
             for(uint i = 0; i < _milestone[msg.sender][_roundId].length; i++){
                 if(milestoneApprovalStatus[_roundId][_milestone[msg.sender][_roundId][i]._num] != 1){
                     lockedAmount += (totalTokensOfInvestor[_roundId][msg.sender] * _milestone[msg.sender][_roundId][i]._percent) / 100;
@@ -485,6 +482,6 @@ contract FundLock{
     constructor (address investor, uint roundId, uint amount, address privateRoundContractAd) {
         _contractOwner = msg.sender;
         _amount[roundId][investor] = amount;
-        require(ERC20(PrivateRound(privateRoundContractAd).tokenContract()).approve(privateRoundContractAd,amount), "execution failed or reverted");
+        require(ERC20(PrivateRound(privateRoundContractAd).tokenContract(roundId)).approve(privateRoundContractAd,amount), "execution failed or reverted");
     }
 }
